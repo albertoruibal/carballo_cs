@@ -351,16 +351,6 @@ namespace Sharpen
 			return new DateTimeOffset (num + offset.Ticks, offset);
 		}
 
-		public static CharsetDecoder NewDecoder (this Encoding enc)
-		{
-			return new CharsetDecoder (enc);
-		}
-
-		public static CharsetEncoder NewEncoder (this Encoding enc)
-		{
-			return new CharsetEncoder (enc);
-		}
-
 		public static int NumberOfLeadingZeros (int val)
 		{
 			uint num = (uint)val;
