@@ -29,7 +29,6 @@ namespace Com.Alonsoruibal.Chess.Movegen
 			bbAttacks = BitboardAttacks.GetInstance();
 			moveIndex = mIndex;
 			all = board.GetAll();
-			// only for clearity
 			mines = board.GetMines();
 			others = board.GetOthers();
 			int index = 0;
