@@ -7,7 +7,7 @@ http://github.com/albertoruibal/carballo
 
 It only implements the UCI interface to be used in chess GUIs like Arena.
 
-The performance of the converted code is slightly slower then the original Java code.
+The performance of the converted code is slightly slower than the original Java code.
 
 It uses this version of Sharpen:
 
