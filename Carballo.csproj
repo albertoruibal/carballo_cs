@@ -48,11 +48,8 @@
     <Compile Include="Sharpen\ByteArrayOutputStream.cs" />
     <Compile Include="Sharpen\ByteOrder.cs" />
     <Compile Include="Sharpen\Callable.cs" />
-    <Compile Include="Sharpen\CharBuffer.cs" />
     <Compile Include="Sharpen\CharSequence.cs" />
     <Compile Include="Sharpen\Collections.cs" />
-    <Compile Include="Sharpen\ConcurrentMap.cs" />
-    <Compile Include="Sharpen\DateFormat.cs" />
     <Compile Include="Sharpen\DeflaterOutputStream.cs" />
     <Compile Include="Sharpen\EnumSet.cs" />
     <Compile Include="Sharpen\EnumerableWrapper.cs" />
@@ -62,15 +59,10 @@
     <Compile Include="Sharpen\FilterInputStream.cs" />
     <Compile Include="Sharpen\FilterOutputStream.cs" />
     <Compile Include="Sharpen\Future.cs" />
-    <Compile Include="Sharpen\InflaterInputStream.cs" />
     <Compile Include="Sharpen\InputStream.cs" />
     <Compile Include="Sharpen\InputStreamReader.cs" />
     <Compile Include="Sharpen\Iterable.cs" />
     <Compile Include="Sharpen\Iterator.cs" />
-    <Compile Include="Sharpen\LinkageError.cs" />
-    <Compile Include="Sharpen\LinkedHashMap.cs" />
-    <Compile Include="Sharpen\LinkedHashSet.cs" />
-    <Compile Include="Sharpen\ListIterator.cs" />
     <Compile Include="Sharpen\Matcher.cs" />
     <Compile Include="Sharpen\MessageFormat.cs" />
     <Compile Include="Sharpen\OutputStream.cs" />
@@ -78,10 +70,6 @@
     <Compile Include="Sharpen\Pattern.cs" />
     <Compile Include="Sharpen\PipedInputStream.cs" />
     <Compile Include="Sharpen\PipedOutputStream.cs" />
-    <Compile Include="Sharpen\Process.cs" />
-    <Compile Include="Sharpen\Reference.cs" />
-    <Compile Include="Sharpen\ReferenceQueue.cs" />
-    <Compile Include="Sharpen\ResourceBundle.cs" />
     <Compile Include="Sharpen\Runnable.cs" />
     <Compile Include="Sharpen\ByteBuffer.cs" />
     <Compile Include="Sharpen\DataConverter.cs" />
@@ -105,13 +93,10 @@
     <Compile Include="Sharpen\RandomAccessFile.cs" />
     <Compile Include="Sharpen\Runtime.cs" />
     <Compile Include="Sharpen\ScheduledThreadPoolExecutor.cs" />
-    <Compile Include="Sharpen\SimpleDateFormat.cs" />
-    <Compile Include="Sharpen\SynchronizedList.cs" />
     <Compile Include="Sharpen\Thread.cs" />
     <Compile Include="Sharpen\ThreadFactory.cs" />
     <Compile Include="Sharpen\ThreadPoolExecutor.cs" />
     <Compile Include="Sharpen\TimeUnit.cs" />
-    <Compile Include="Sharpen\TreeSet.cs" />
     <Compile Include="Sharpen\URLEncoder.cs" />
     <Compile Include="Sharpen\WeakReference.cs" />
     <Compile Include="Sharpen\WrappedSystemStream.cs" />
@@ -145,8 +130,9 @@
     <Compile Include="com\alonsoruibal\chess\search\SearchParameters.cs" />
     <Compile Include="com\alonsoruibal\chess\search\SearchStatusInfo.cs" />
     <Compile Include="com\alonsoruibal\chess\tt\TranspositionTable.cs" />
-    <Compile Include="com\alonsoruibal\chess\tt\TranspositionTableNoEval.cs" />
     <Compile Include="com\alonsoruibal\chess\uci\Uci.cs" />
+    <Compile Include="Util\BigEndian.cs" />
+    <Compile Include="com\alonsoruibal\chess\book\ResourceBook.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.SharpZipLib" />
@@ -157,5 +143,16 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="com\" />
+    <Folder Include="Util\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="sharpen-all-options" />
+    <None Include="convert.sh" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="book_small.bin">
+      <DeployService-Deploy>True</DeployService-Deploy>
+      <Gettext-ScanForTranslations>False</Gettext-ScanForTranslations>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

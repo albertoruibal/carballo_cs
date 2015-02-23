@@ -23,11 +23,11 @@ namespace Com.Alonsoruibal.Chess.Uci
 			Logger.noLog = true;
 			// Disable logging
 			config = new Config();
+			config.SetBook(new ResourceBook("Carballo.book_small.bin"));
 		}
 
 		internal virtual void Loop()
-		{
-			try
+		{			try
 			{
 				while (true)
 				{

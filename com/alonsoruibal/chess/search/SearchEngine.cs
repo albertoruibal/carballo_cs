@@ -688,11 +688,10 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					// No pawns on 7TH
 					razoringProbe++;
-					if (depthRemaining <= Ply)
-					{
-						razoringHit++;
-						return QuiescentSearch(0, alpha, beta);
-					}
+					//				if (depthRemaining <= PLY) {
+					//					razoringHit++;
+					//					return quiescentSearch(0, alpha, beta);
+					//				}
 					int rbeta = beta - config.GetRazoringMargin();
 					int v = QuiescentSearch(0, rbeta - 1, rbeta);
 					if (v < rbeta)

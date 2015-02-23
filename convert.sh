@@ -1,11 +1,12 @@
 #!/bin/bash
-
 #
 # Copy Java files to be converted to a tmp directory
+# It assumes that the carballo source code is at ../carballo
 #
 mkdir tmp
 cp -a ../carballo/core/src/main/java/com tmp/
 cp -a ../carballo/jse/src/main/java/com tmp/
+#cp -a ../carballo/jse/src/test/java/com tmp/
 
 #
 # Delete unwanted files in the conversion
@@ -13,9 +14,8 @@ cp -a ../carballo/jse/src/main/java/com tmp/
 # Avoid more than one main() in the code
 rm ./tmp/com/alonsoruibal/chess/evaluation/KPKBitbaseGenerator.java
 rm ./tmp/com/alonsoruibal/chess/bitboard/MagicNumbersGenerator.java
-# Do not use File Book
+# These classes are converted manually
 rm ./tmp/com/alonsoruibal/chess/book/FileBook.java
-# This class is converted manually
 rm ./tmp/com/alonsoruibal/chess/uci/Uci.java
 
 #

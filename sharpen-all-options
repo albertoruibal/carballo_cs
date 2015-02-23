@@ -1,16 +1,7 @@
 -pascalCase+ 
 -nativeTypeSystem 
 -organizeUsings
-
--methodMapping System.out.println System.Console.WriteLine
-
--typeMapping java.lang.System.in System.Console.In
-
--typeMapping java.io.DataInputStream System.IO.BinaryReader
--methodMapping java.io.DataInputStream.readShort System.IO.BinaryReader.ReadInt16
--methodMapping java.io.DataInputStream.readInt System.IO.BinaryReader.ReadInt32
--methodMapping java.io.DataInputStream.readLong System.IO.BinaryReader.ReadInt64
--methodMapping java.io.DataInputStream.skipBytes System.IO.BinaryReader.ReadBytes
+-junitConversion
 
 -methodMapping java.util.Iterator.hasNext HasNext
 -methodMapping java.util.Iterator.next Next
@@ -45,7 +36,6 @@
 -namespaceMapping java.security.cert Sharpen
 -namespaceMapping java.security Sharpen
 -namespaceMapping javax.net.ssl Sharpen
--namespaceMapping org.ietf.jgss Sharpen
 -methodMapping java.lang.Object.memberwiseClone Clone
 -methodMapping java.nio.charset.Charset.forName Sharpen.Extensions.GetEncoding
 -methodMapping java.util.List<>.remove RemoveAt
@@ -86,7 +76,6 @@
 -methodMapping java.io.PrintWriter.println WriteLine
 -methodMapping java.lang.ArrayIndexOutOfBoundsException.ArrayIndexOutOfBoundsException(int) Sharpen.Extensions.CreateIndexOutOfRangeException
 -methodMapping java.lang.Appendable.append(java.lang.CharSequence,int,int) AppendRange
--methodMapping java.util.Date.Date(long) Sharpen.Extensions.CreateDate
 -methodMapping java.lang.Long.signum Sharpen.Extensions.Signum
 -methodMapping java.util.Collection.add AddItem
 -methodMapping java.util.ArrayList.removeElement Remove
@@ -183,6 +172,16 @@
 -fullyQualify GSSContext
 -fullyQualify Test
 
+-methodMapping System.out.println System.Console.WriteLine
+-typeMapping java.lang.System.in System.Console.In
+
+-methodMapping java.util.Date.Date(long) Sharpen.Extensions.CreateDate
 -propertyMapping java.util.Date.getYear Year
 -propertyMapping java.util.Date.getMonth Month
 -propertyMapping java.util.Date.getDay Day
+
+-typeMapping java.io.DataInputStream System.IO.BinaryReader
+-methodMapping java.io.DataInputStream.readShort ReadInt16
+-methodMapping java.io.DataInputStream.readInt ReadInt32
+-methodMapping java.io.DataInputStream.readLong ReadInt64
+-methodMapping java.io.DataInputStream.skipBytes ReadBytes

@@ -1,9 +1,9 @@
-﻿<Properties>
+﻿<Properties GitUserInfo="UsingGIT">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Sharpen/X509TrustManager.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="sharpen-all-options">
     <Files>
-      <File FileName="com/alonsoruibal/chess/uci/Uci.cs" Line="10" Column="37" />
-      <File FileName="Sharpen/X509TrustManager.cs" Line="30" Column="17" />
+      <File FileName="com/alonsoruibal/chess/book/FileBook.cs" Line="82" Column="28" />
+      <File FileName="sharpen-all-options" Line="44" Column="3" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

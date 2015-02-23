@@ -12,7 +12,7 @@ namespace CarballoChessEngine
 		public static void Main (string[] args)
 		{
 			Config config = new Config();
-			config.SetBook(new FileBook("book_small.bin"));
+			config.SetBook(new ResourceBook("Carballo.book_small.bin"));
 			SearchParameters searchParams = new SearchParameters();
 			searchParams.SetMoveTime(30000);
 			SearchEngine searchEngine = new SearchEngine(config);

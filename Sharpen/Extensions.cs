@@ -322,11 +322,6 @@ namespace Sharpen
 			return col.Last<T> ();
 		}
 
-		public static ListIterator<T> ListIterator<T> (this IList<T> col, int n)
-		{
-			return new ListIterator<T> (col, n);
-		}
-
 		public static int LowestOneBit (int val)
 		{
 			return (((int)1) << NumberOfTrailingZeros (val));
@@ -769,16 +764,6 @@ namespace Sharpen
 		{
 			si.FileName = args[0];
 			si.Arguments = string.Join (" ", args.Skip (1).Select (a => "\"" + a + "\"").ToArray ());
-		}
-		
-		public static SystemProcess Start (this ProcessStartInfo si)
-		{
-			si.UseShellExecute = false;
-			si.RedirectStandardInput = true;
-			si.RedirectStandardError = true;
-			si.RedirectStandardOutput = true;
-			si.CreateNoWindow = true;
-			return SystemProcess.Start (si);
 		}
 	}
 }

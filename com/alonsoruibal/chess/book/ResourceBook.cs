@@ -11,10 +11,10 @@ namespace Com.Alonsoruibal.Chess.Book
 {
 	/// <summary>Polyglot opening book support</summary>
 	/// <author>rui</author>
-	public class FileBook : Com.Alonsoruibal.Chess.Book.Book
+	public class ResourceBook : Com.Alonsoruibal.Chess.Book.Book
 	{
 		/// <summary>Logger for this class</summary>
-		private static readonly Logger logger = Logger.GetLogger("FileBook");
+		private static readonly Logger logger = Logger.GetLogger("ResourceBook");
 
 		private string bookName;
 
@@ -26,7 +26,7 @@ namespace Com.Alonsoruibal.Chess.Book
 
 		private readonly Random random = new Random();
 
-		public FileBook(string fileName)
+		public ResourceBook(string fileName)
 		{
 			bookName = fileName;
 			logger.Debug("Using opening book " + bookName);
@@ -73,7 +73,7 @@ namespace Com.Alonsoruibal.Chess.Book
 			long key2Find = board.GetKey();
 			try
 			{
-				BigEndianReader dataInputStream = new BigEndianReader( System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(bookName));
+				BigEndianReader dataInputStream = new BigEndianReader(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(bookName));
 				long key;
 				int moveInt;
 				int weight;
@@ -101,9 +101,8 @@ namespace Com.Alonsoruibal.Chess.Book
 					}
 				}
 			}
-			catch (Exception e)
+			catch (Exception )
 			{
-				logger.Debug(e.ToString());
 			}
 		}
 
