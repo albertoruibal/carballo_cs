@@ -37,7 +37,7 @@ namespace Com.Alonsoruibal.Chess.Uci
 					string command = tokens[index++].ToLower();
 					if ("uci".Equals(command))
 					{
-						System.Console.Out.WriteLine("id name Carballo Chess Engine v1.0");
+						System.Console.Out.WriteLine("id name Carballo Chess Engine v1.1");
 						System.Console.Out.WriteLine("id author Alberto Alonso Ruibal");
 						System.Console.Out.WriteLine("option name Hash type spin default " + Config.DefaultTranspositionTableSize
 							 + " min 16 max 256");
@@ -113,6 +113,7 @@ namespace Com.Alonsoruibal.Chess.Uci
 					{
 						if ("setoption".Equals(command))
 						{
+							index++; // Skip name
 							// get the option name without spaces
 							StringBuilder nameSB = new StringBuilder();
 							string tok;

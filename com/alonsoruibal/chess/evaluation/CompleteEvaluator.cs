@@ -1,3 +1,5 @@
+using System;
+using System.Text;
 using Com.Alonsoruibal.Chess;
 using Com.Alonsoruibal.Chess.Bitboard;
 using Com.Alonsoruibal.Chess.Log;
@@ -74,20 +76,35 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 
 		private static readonly int QueenAttacksKing = Oe(5, 0);
 
-		private static readonly int PawnIsolated = Oe(-10, -20);
+		private static readonly int PawnUnsupported = Oe(-2, 4);
 
-		private static readonly int PawnDoubled = Oe(-10, -20);
+		private static readonly int PawnBackwards = Oe(-10, -15);
 
-		private static readonly int PawnWeak = Oe(-10, -15);
+		private static readonly int[] PawnIsolated = new int[] { Oe(-15, -20), Oe(-12, -16
+			) };
 
-		private static readonly int[] PawnPasser = new int[] { 0, Oe(5, 10), Oe(10, 20), 
-			Oe(20, 40), Oe(30, 60), Oe(50, 100), Oe(75, 150), 0 };
+		private static readonly int[] PawnDoubled = new int[] { Oe(-2, -4), Oe(-4, -8) };
 
-		private static readonly int[] PawnPasserSupport = new int[] { 0, 0, Oe(5, 10), Oe
-			(10, 20), Oe(15, 30), Oe(25, 50), Oe(37, 75), 0 };
+		private static readonly int[] PawnCandidate = new int[] { 0, 0, 0, Oe(5, 5), Oe(10
+			, 12), Oe(20, 25), 0, 0 };
 
-		private static readonly int[] PawnPasserKingD = new int[] { 0, 0, Oe(1, 2), Oe(2, 
-			4), Oe(3, 6), Oe(5, 10), Oe(7, 15), 0 };
+		private static readonly int[] PawnPasser = new int[] { 0, 0, 0, Oe(10, 10), Oe(20
+			, 25), Oe(40, 50), Oe(60, 75), 0 };
+
+		private static readonly int[] PawnPasserOutside = new int[] { 0, 0, 0, 0, Oe(2, 5
+			), Oe(5, 10), Oe(10, 20), 0 };
+
+		private static readonly int[] PawnPasserConnected = new int[] { 0, 0, 0, 0, Oe(5, 
+			10), Oe(10, 15), Oe(20, 30), 0 };
+
+		private static readonly int[] PawnPasserSupported = new int[] { 0, 0, 0, 0, Oe(5, 
+			10), Oe(10, 15), Oe(15, 25), 0 };
+
+		private static readonly int[] PawnPasserMobile = new int[] { 0, 0, 0, Oe(1, 2), Oe
+			(2, 3), Oe(3, 5), Oe(5, 10), 0 };
+
+		private static readonly int[] PawnPasserRunner = new int[] { 0, 0, 0, 0, Oe(5, 10
+			), Oe(10, 20), Oe(20, 40), 0 };
 
 		private static readonly int[] KingSafetyPonder = new int[] { 0, 1, 4, 8, 16, 25, 
 			36, 49, 50, 50, 50, 50, 50, 50, 50, 50 };
@@ -191,11 +208,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 
 		public static readonly int[] kingIndexValue = new int[64];
 
-		internal Config config;
-
-		public bool debug = false;
-
-		public CompleteEvaluator(Config config)
+		static CompleteEvaluator()
 		{
 			// Bonus by having two bishops in different colors
 			// Bishops
@@ -209,25 +222,18 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			// Protection: sums for each pawn near king (opening)
 			// King Safety: not in endgame!!!
 			// Pawns
-			// Penalty for each pawn in a doubled rank
-			//	private final static int PAWN_BACKWARD         = oe(-8,-10);
-			//	private final static int PAWN_BLOCKED          = oe(0,0); //-20; // Pawn blocked by opposite pawn
-			// Weak pawn
-			// Depends of the rank
-			// Depends of the rank
-			// Sums by each square away of the other opposite king
+			// Array is not opposed, opposed
+			// Array by relative rank
+			// Candidates to pawn passer
+			// no opposite pawns at left or at right
+			// defended by pawn
 			// Ponder kings attacks by the number of attackers (not pawns) later divided by 8
 			// two or more pieces of the other side attacked by inferior pieces
 			// Tempo
 			// Add to moving side score
 			// The pair of values are {opening, endgame}
 			// Values are rotated for whites, so when white is playing is like shown in the code
-			this.config = config;
-		}
-
-		static CompleteEvaluator()
-		{
-			// Initialize Piece square values Fruit/Toga style 
+			// Initialize Piece square values Fruit/Toga style
 			int i;
 			for (i = 0; i < 64; i++)
 			{
@@ -244,7 +250,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 					 + KingLine[column] * KingCenterValue + KingLine[rank] * KingCenterValue;
 			}
 			knightIndexValue[56] += KnightTrappedValue;
-			// H8 
+			// H8
 			knightIndexValue[63] += KnightTrappedValue;
 			// A8
 			for (i = 0; i < 8; i++)
@@ -269,21 +275,23 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			pawnIndexValue[36] += Oe(10, 0);
 		}
 
-		private int[] bishopCount = new int[] { 0, 0 };
+		private Config config;
 
-		private long[] superiorPieceAttacked = new long[] { 0, 0 };
+		public bool debug = false;
 
-		private int[] material = new int[] { 0, 0 };
+		public StringBuilder debugSB;
 
 		private int[] pawnMaterial = new int[] { 0, 0 };
 
-		private int[] mobility = new int[] { 0, 0 };
-
-		private int[] attacks = new int[] { 0, 0 };
+		private int[] material = new int[] { 0, 0 };
 
 		private int[] center = new int[] { 0, 0 };
 
 		private int[] positional = new int[] { 0, 0 };
+
+		private int[] mobility = new int[] { 0, 0 };
+
+		private int[] attacks = new int[] { 0, 0 };
 
 		private int[] kingAttackersCount = new int[] { 0, 0 };
 
@@ -293,212 +301,318 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 
 		private int[] passedPawns = new int[] { 0, 0 };
 
+		private long[] attacksFromSquare = new long[64];
+
+		private long[] superiorPieceAttacked = new long[] { 0, 0 };
+
+		private long[] attackedSquares = new long[] { 0, 0 };
+
 		private long[] pawnAttacks = new long[] { 0, 0 };
 
 		private long[] squaresNearKing = new long[] { 0, 0 };
 
-		private int[] knightKaufBonus = new int[] { 0, 0 };
+		public CompleteEvaluator(Config config)
+		{
+			// D5
+			//	int kingDefense[] = {0,0};
+			// Squares attackeds by pawns
+			// Squares surrounding King
+			this.config = config;
+		}
 
-		private int[] rookKaufBonus = new int[] { 0, 0 };
-
-		private long all;
-
-		private long pieceAttacks;
-
-		private long pieceAttacksXray;
-
-		private long mines;
-
-		private long others;
-
-		private long square;
-
-		private int auxInt;
-
-		private int pcsqIndex;
-
-		private int color;
-
-		private int index;
-
-		private bool isWhite;
-
-		// D5
-		//	int kingDefense[] = {0,0};
-		// Squares attackeds by pawns
-		// Squares surrounding King
 		public override int Evaluate(Board board)
 		{
-			all = board.GetAll();
-			Arrays.Fill(bishopCount, 0);
-			Arrays.Fill(superiorPieceAttacked, 0);
-			Arrays.Fill(material, 0);
-			Arrays.Fill(pawnMaterial, 0);
-			Arrays.Fill(mobility, 0);
-			Arrays.Fill(attacks, 0);
-			Arrays.Fill(center, 0);
-			Arrays.Fill(positional, 0);
-			Arrays.Fill(kingAttackersCount, 0);
-			Arrays.Fill(kingSafety, 0);
-			Arrays.Fill(pawnStructure, 0);
-			Arrays.Fill(passedPawns, 0);
-			// Squares attackeds by pawns
+			if (debug)
+			{
+				debugSB = new StringBuilder();
+				debugSB.Append("\n");
+				debugSB.Append(board.ToString());
+				debugSB.Append("\n");
+			}
+			int whitePawns = BitboardUtils.PopCount(board.pawns & board.whites);
+			int blackPawns = BitboardUtils.PopCount(board.pawns & board.blacks);
+			int whiteKnights = BitboardUtils.PopCount(board.knights & board.whites);
+			int blackKnights = BitboardUtils.PopCount(board.knights & board.blacks);
+			int whiteBishops = BitboardUtils.PopCount(board.bishops & board.whites);
+			int blackBishops = BitboardUtils.PopCount(board.bishops & board.blacks);
+			int whiteRooks = BitboardUtils.PopCount(board.rooks & board.whites);
+			int blackRooks = BitboardUtils.PopCount(board.rooks & board.blacks);
+			int whiteQueens = BitboardUtils.PopCount(board.queens & board.whites);
+			int blackQueens = BitboardUtils.PopCount(board.queens & board.blacks);
+			int endGameValue = EndgameEvaluator.EndGameValue(board, whitePawns, blackPawns, whiteKnights
+				, blackKnights, whiteBishops, blackBishops, whiteRooks, blackRooks, whiteQueens, 
+				blackQueens);
+			if (endGameValue != Evaluator.NoValue)
+			{
+				return endGameValue;
+			}
+			long all = board.GetAll();
+			long pieceAttacks;
+			long pieceAttacksXray;
+			// From material imbalances (Larry Kaufmann):
+			// A further refinement would be to raise the knight's value by 1/16 and lower the rook's value by 1/8
+			// for each pawn above five of the side being valued, with the opposite adjustment for each pawn short of five
+			int knightKaufBonusWhite = KnightKaufBonus * (whitePawns - 5);
+			int knightKaufBonusBlack = KnightKaufBonus * (blackPawns - 5);
+			int rookKaufBonusWhite = RookKaufBonus * (whitePawns - 5);
+			int rookKaufBonusBlack = RookKaufBonus * (blackPawns - 5);
+			pawnMaterial[0] = Pawn * whitePawns;
+			pawnMaterial[1] = Pawn * blackPawns;
+			material[0] = (Knight + knightKaufBonusWhite) * whiteKnights + Bishop * whiteBishops
+				 + (Rook + rookKaufBonusWhite) * whiteRooks + Queen * whiteQueens + ((board.whites
+				 & board.bishops & BitboardUtils.WhiteSquares) != 0 && (board.whites & board.bishops
+				 & BitboardUtils.BlackSquares) != 0 ? BishopPair : 0);
+			//
+			//
+			material[1] = (Knight + knightKaufBonusBlack) * blackKnights + Bishop * blackBishops
+				 + (Rook + rookKaufBonusBlack) * blackRooks + Queen * blackQueens + ((board.blacks
+				 & board.bishops & BitboardUtils.WhiteSquares) != 0 && (board.blacks & board.bishops
+				 & BitboardUtils.BlackSquares) != 0 ? BishopPair : 0);
+			//
+			//
+			center[0] = 0;
+			center[1] = 0;
+			positional[0] = 0;
+			positional[1] = 0;
+			mobility[0] = 0;
+			mobility[1] = 0;
+			kingAttackersCount[0] = 0;
+			kingAttackersCount[1] = 0;
+			kingSafety[0] = 0;
+			kingSafety[1] = 0;
+			pawnStructure[0] = 0;
+			pawnStructure[1] = 0;
+			passedPawns[0] = 0;
+			passedPawns[1] = 0;
+			superiorPieceAttacked[0] = 0;
+			superiorPieceAttacked[1] = 0;
+			attackedSquares[0] = 0;
+			attackedSquares[1] = 0;
+			// Squares attacked by pawns
 			pawnAttacks[0] = ((board.pawns & board.whites & ~BitboardUtils.b_l) << 9) | ((board
 				.pawns & board.whites & ~BitboardUtils.b_r) << 7);
 			pawnAttacks[1] = ((long)(((ulong)(board.pawns & board.blacks & ~BitboardUtils.b_r
 				)) >> 9)) | ((long)(((ulong)(board.pawns & board.blacks & ~BitboardUtils.b_l)) >>
 				 7));
+			attacks[0] = 0;
+			attacks[1] = 0;
 			// Squares surrounding King
 			squaresNearKing[0] = bbAttacks.king[BitboardUtils.Square2Index(board.whites & board
 				.kings)];
 			squaresNearKing[1] = bbAttacks.king[BitboardUtils.Square2Index(board.blacks & board
 				.kings)];
-			// From material imbalances (Larry Kaufmann):
-			// A further refinement would be to raise the knight's value by 1/16 and lower the rook's value by 1/8
-			// for each pawn above five of the side being valued, with the opposite adjustment for each pawn short of five
-			int whitePawnsCount = BitboardUtils.PopCount(board.pawns & board.whites);
-			int blackPawnsCount = BitboardUtils.PopCount(board.pawns & board.blacks);
-			knightKaufBonus[0] = KnightKaufBonus * (whitePawnsCount - 5);
-			knightKaufBonus[1] = KnightKaufBonus * (blackPawnsCount - 5);
-			rookKaufBonus[0] = RookKaufBonus * (whitePawnsCount - 5);
-			rookKaufBonus[1] = RookKaufBonus * (blackPawnsCount - 5);
+			// first build attacks info
+			int index;
+			long square = 1;
+			for (index = 0; index < 64; index++)
+			{
+				if ((square & all) != 0)
+				{
+					bool isWhite = ((board.whites & square) != 0);
+					int color = (isWhite ? 0 : 1);
+					if ((square & board.pawns) != 0)
+					{
+						pieceAttacks = (isWhite ? bbAttacks.pawnUpwards[index] : bbAttacks.pawnDownwards[
+							index]);
+					}
+					else
+					{
+						if ((square & board.knights) != 0)
+						{
+							pieceAttacks = bbAttacks.knight[index];
+						}
+						else
+						{
+							if ((square & board.bishops) != 0)
+							{
+								pieceAttacks = bbAttacks.GetBishopAttacks(index, all);
+							}
+							else
+							{
+								if ((square & board.rooks) != 0)
+								{
+									pieceAttacks = bbAttacks.GetRookAttacks(index, all);
+								}
+								else
+								{
+									if ((square & board.queens) != 0)
+									{
+										pieceAttacks = bbAttacks.GetRookAttacks(index, all) | bbAttacks.GetBishopAttacks(
+											index, all);
+									}
+									else
+									{
+										if ((square & board.kings) != 0)
+										{
+											pieceAttacks = bbAttacks.king[index];
+										}
+										else
+										{
+											pieceAttacks = 0;
+										}
+									}
+								}
+							}
+						}
+					}
+					attackedSquares[color] |= pieceAttacks;
+					attacksFromSquare[index] = pieceAttacks;
+				}
+				square <<= 1;
+			}
 			square = 1;
 			index = 0;
 			while (square != 0)
 			{
-				isWhite = ((board.whites & square) != 0);
-				color = (isWhite ? 0 : 1);
-				mines = (isWhite ? board.whites : board.blacks);
-				others = (isWhite ? board.blacks : board.whites);
-				pcsqIndex = (isWhite ? index : 63 - index);
 				if ((square & all) != 0)
 				{
+					bool isWhite = ((board.whites & square) != 0);
+					int color = (isWhite ? 0 : 1);
+					long mines = (isWhite ? board.whites : board.blacks);
+					long others = (isWhite ? board.blacks : board.whites);
+					long otherPawnAttacks = (isWhite ? pawnAttacks[1] : pawnAttacks[0]);
+					int pcsqIndex = (isWhite ? index : 63 - index);
 					int rank = index >> 3;
 					int column = 7 - index & 7;
+					pieceAttacks = attacksFromSquare[index];
 					if ((square & board.pawns) != 0)
 					{
-						pawnMaterial[color] += Pawn;
 						center[color] += pawnIndexValue[pcsqIndex];
-						pieceAttacks = (isWhite ? bbAttacks.pawnUpwards[index] : bbAttacks.pawnDownwards[
-							index]);
-						superiorPieceAttacked[color] |= pieceAttacks & others & (board.knights | board.bishops
-							 | board.rooks | board.queens);
 						if ((pieceAttacks & squaresNearKing[1 - color]) != 0)
 						{
 							kingSafety[color] += PawnAttacksKing;
 						}
-						// Doubled pawn detection
-						if ((BitboardUtils.Column[column] & BitboardUtils.RanksForward[color][rank] & board
-							.pawns & mines) != square)
+						superiorPieceAttacked[color] |= pieceAttacks & others & (board.knights | board.bishops
+							 | board.rooks | board.queens);
+						long myPawns = board.pawns & mines;
+						long otherPawns = board.pawns & others;
+						long adjacentColumns = BitboardUtils.ColumnsAdjacents[column];
+						long ranksForward = BitboardUtils.RanksForward[color][rank];
+						long routeToPromotion = BitboardUtils.Column[column] & ranksForward;
+						long myPawnsBesideAndBehindAdjacent = BitboardUtils.RankAndBackward[color][rank] 
+							& adjacentColumns & myPawns;
+						long myPawnsAheadAdjacent = ranksForward & adjacentColumns & myPawns;
+						long otherPawnsAheadAdjacent = ranksForward & adjacentColumns & otherPawns;
+						long myPawnAttacks = (isWhite ? pawnAttacks[0] : pawnAttacks[1]);
+						bool isolated = (myPawns & adjacentColumns) == 0;
+						bool supported = (square & myPawnAttacks) != 0;
+						bool doubled = (myPawns & routeToPromotion) != 0;
+						bool opposed = (otherPawns & routeToPromotion) != 0;
+						bool passed = !doubled && !opposed && (otherPawnsAheadAdjacent == 0);
+						bool candidate = !doubled && !opposed && !passed && (((otherPawnsAheadAdjacent & 
+							~pieceAttacks) == 0) || (BitboardUtils.PopCount(myPawnsBesideAndBehindAdjacent) 
+							>= BitboardUtils.PopCount(otherPawnsAheadAdjacent)));
+						// Can become passer advancing
+						// Has more friend pawns beside and behind than opposed pawns controlling his route to promotion
+						bool backwards = !isolated && !passed && !candidate && (myPawnsBesideAndBehindAdjacent
+							 == 0) && ((pieceAttacks & otherPawns) == 0) && ((BitboardUtils.RankAndBackward[
+							color][isWhite ? BitboardUtils.GetRankLsb(myPawnsAheadAdjacent) : BitboardUtils.
+							GetRankMsb(myPawnsAheadAdjacent)] & routeToPromotion & (board.pawns | otherPawnAttacks
+							)) != 0);
+						// No backwards if it can capture
+						// Other pawns stopping it from advance, opposing or capturing it before reaching my pawns
+						if (debug)
 						{
-							pawnStructure[color] += PawnDoubled;
+							bool connected = ((bbAttacks.king[index] & adjacentColumns & myPawns) != 0);
+							debugSB.Append("PAWN " + index + (color == 0 ? " WHITE " : " BLACK ") + BitboardUtils
+								.PopCount(myPawnsBesideAndBehindAdjacent) + " " + BitboardUtils.PopCount(otherPawnsAheadAdjacent
+								) + " " + (isolated ? "isolated " : string.Empty) + (supported ? "supported " : 
+								string.Empty) + (connected ? "connected " : string.Empty) + (doubled ? "doubled "
+								 : string.Empty) + (opposed ? "opposed " : string.Empty) + (passed ? "passed " : 
+								string.Empty) + (candidate ? "candidate " : string.Empty) + (backwards ? "backwards "
+								 : string.Empty) + "\n");
 						}
-						// Blocked Pawn
-						//					boolean blocked = ((isWhite ? (square<< 8)  : (square >>> 8)) & others) != 0;
-						//					if (blocked) pawnStructure[color] += PAWN_BLOCKED;
-						// Backwards Pawn
-						//					if (((BitboardUtils.COLUMN[column] | BitboardUtils.COLUMNS_ADJACENTS[column]) & ~BitboardUtils.RANKS_FORWARD[color][rank] & board.pawns & mines) == 0)
-						//						pawnStructure[color] += PAWN_BACKWARD;
-						// Passed Pawn
-						if (((BitboardUtils.Column[column] | BitboardUtils.ColumnsAdjacents[column]) & (BitboardUtils
-							.RanksForward[color][rank]) & board.pawns & others) == 0)
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						//
+						if (!supported && !isolated)
 						{
-							passedPawns[color] += PawnPasser[(isWhite ? rank : 7 - rank)];
-							if ((square & pawnAttacks[color]) != 0)
-							{
-								passedPawns[color] += PawnPasserSupport[(isWhite ? rank : 7 - rank)];
-							}
-							passedPawns[color] += PawnPasserKingD[(isWhite ? rank : 7 - rank)] * BitboardUtils
-								.Distance(index, BitboardUtils.Square2Index(board.kings & others));
+							pawnStructure[color] += PawnUnsupported;
 						}
-						// Isolated pawn
-						bool isolated = (BitboardUtils.ColumnsAdjacents[column] & board.pawns & mines) ==
-							 0;
+						if (doubled)
+						{
+							pawnStructure[color] += PawnDoubled[opposed ? 1 : 0];
+						}
 						if (isolated)
 						{
-							pawnStructure[color] += PawnIsolated;
+							pawnStructure[color] += PawnIsolated[opposed ? 1 : 0];
 						}
-						long auxLong;
-						long auxLong2;
-						bool weak = !isolated && (pawnAttacks[color] & square) == 0;
-						//						&& pcsqIndex >= 24
-						// not defended is weak and only if over rank 2
-						if (weak)
+						if (backwards)
 						{
-							// Can be defended advancing one square
-							auxLong = (isWhite ? bbAttacks.pawnDownwards[color] : bbAttacks.pawnUpwards[color
-								]) & ~pawnAttacks[1 - color] & ~all;
-							while (auxLong != 0)
-							{
-								// Not attacked by other pawn and empty
-								auxLong2 = BitboardUtils.Lsb(auxLong);
-								auxLong &= ~auxLong2;
-								auxLong2 = isWhite ? (long)(((ulong)auxLong2) >> 8) : auxLong2 << 8;
-								if ((auxLong2 & mines & board.pawns) != 0)
-								{
-									weak = false;
-								}
-								else
-								{
-									// Defended advancing one pawn two squares
-									if ((auxLong2 & all) == 0)
-									{
-										// empty square								
-										auxLong2 = (isWhite ? (long)(((ulong)auxLong2) >> 8) : auxLong2 << 8);
-										if (((isWhite ? BitboardUtils.Rank[1] : BitboardUtils.Rank[6]) & auxLong2 & board
-											.pawns & mines) != 0)
-										{
-											weak = false;
-										}
-									}
-								}
-							}
-							if (weak)
-							{
-								// Can advance to be supported
-								auxLong = (isWhite ? square << 8 : (long)(((ulong)square) >> 8)) & ~pawnAttacks[1
-									 - color] & ~all;
-								if (auxLong != 0)
-								{
-									if ((auxLong & pawnAttacks[color]) != 0)
-									{
-										weak = false;
-									}
-									else
-									{
-										// Checks advancing two squares if in initial position
-										if (((isWhite ? BitboardUtils.Rank[1] : BitboardUtils.Rank[6]) & square) != 0)
-										{
-											auxLong = (isWhite ? square << 16 : (long)(((ulong)square) >> 16)) & ~pawnAttacks
-												[1 - color] & ~all;
-											if ((auxLong & pawnAttacks[color]) != 0)
-											{
-												weak = false;
-											}
-										}
-									}
-								}
-							}
+							pawnStructure[color] += PawnBackwards;
 						}
-						if (weak)
+						if (candidate)
 						{
-							pawnStructure[color] += PawnWeak;
+							passedPawns[color] += PawnCandidate[(isWhite ? rank : 7 - rank)];
+						}
+						if (passed)
+						{
+							int relativeRank = (isWhite ? rank : 7 - rank);
+							long backColumn = BitboardUtils.Column[column] & BitboardUtils.RanksBackward[color
+								][rank];
+							// If has has root/queen behind consider all the route to promotion attacked or defended
+							long attackedAndNotDefendedRoute = ((routeToPromotion & attackedSquares[1 - color
+								]) | ((backColumn & (board.rooks | board.queens) & others) != 0 ? routeToPromotion
+								 : 0)) & ~((routeToPromotion & attackedSquares[color]) | ((backColumn & (board.rooks
+								 | board.queens) & mines) != 0 ? routeToPromotion : 0));
+							//
+							long pushSquare = isWhite ? square << 8 : (long)(((ulong)square) >> 8);
+							long pawnsLeft = BitboardUtils.RowsLeft[column] & board.pawns;
+							long pawnsRight = BitboardUtils.RowsRight[column] & board.pawns;
+							bool connected = ((bbAttacks.king[index] & adjacentColumns & myPawns) != 0);
+							bool outside = ((pawnsLeft != 0) && (pawnsRight == 0)) || ((pawnsLeft == 0) && (pawnsRight
+								 != 0));
+							bool mobile = ((pushSquare & (all | attackedAndNotDefendedRoute)) == 0);
+							bool runner = mobile && ((routeToPromotion & all) == 0) && (attackedAndNotDefendedRoute
+								 == 0);
+							if (debug)
+							{
+								debugSB.Append("        PASSER " + (outside ? "outside " : string.Empty) + (mobile
+									 ? "mobile " : string.Empty) + (runner ? "runner " : string.Empty) + "\n");
+							}
+							//
+							//
+							//
+							//
+							passedPawns[color] += PawnPasser[relativeRank];
+							if (supported)
+							{
+								passedPawns[color] += PawnPasserSupported[relativeRank];
+							}
+							if (connected)
+							{
+								passedPawns[color] += PawnPasserConnected[relativeRank];
+							}
+							if (outside)
+							{
+								passedPawns[color] += PawnPasserOutside[relativeRank];
+							}
+							if (mobile)
+							{
+								passedPawns[color] += PawnPasserMobile[relativeRank];
+							}
+							if (runner)
+							{
+								passedPawns[color] += PawnPasserRunner[relativeRank];
+							}
 						}
 					}
 					else
 					{
-						//					if (weak) {
-						//						System.out.println("weak pawn: \n" + board.toString());
-						//						System.out.println("square: \n" + BitboardUtils.toString(square));
-						//					}
 						if ((square & board.knights) != 0)
 						{
-							material[color] += Knight + knightKaufBonus[color];
 							center[color] += knightIndexValue[pcsqIndex];
-							pieceAttacks = bbAttacks.knight[index];
-							auxInt = BitboardUtils.PopCount(pieceAttacks & ~mines & ~pawnAttacks[1 - color]) 
-								- KnightMUnits;
-							mobility[color] += KnightM * auxInt;
+							mobility[color] += KnightM * (BitboardUtils.PopCount(pieceAttacks & ~mines & ~otherPawnAttacks
+								) - KnightMUnits);
 							if ((pieceAttacks & squaresNearKing[color]) != 0)
 							{
 								kingSafety[color] += KnightAttacksKing;
@@ -518,16 +632,9 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 						{
 							if ((square & board.bishops) != 0)
 							{
-								material[color] += Bishop;
-								if (++bishopCount[color] == 2)
-								{
-									material[color] += BishopPair;
-								}
 								center[color] += bishopIndexValue[pcsqIndex];
-								pieceAttacks = bbAttacks.GetBishopAttacks(index, all);
-								auxInt = BitboardUtils.PopCount(pieceAttacks & ~mines & ~pawnAttacks[1 - color]) 
-									- BishopMUnits;
-								mobility[color] += BishopM * auxInt;
+								mobility[color] += BishopM * (BitboardUtils.PopCount(pieceAttacks & ~mines & ~otherPawnAttacks
+									) - BishopMUnits);
 								if ((pieceAttacks & squaresNearKing[1 - color]) != 0)
 								{
 									kingSafety[color] += BishopAttacksKing;
@@ -550,12 +657,9 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 							{
 								if ((square & board.rooks) != 0)
 								{
-									material[color] += Rook + rookKaufBonus[color];
 									center[color] += rookIndexValue[pcsqIndex];
-									pieceAttacks = bbAttacks.GetRookAttacks(index, all);
-									auxInt = BitboardUtils.PopCount(pieceAttacks & ~mines & ~pawnAttacks[1 - color]) 
-										- RookMUnits;
-									mobility[color] += RookM * auxInt;
+									mobility[color] += RookM * (BitboardUtils.PopCount(pieceAttacks & ~mines & ~otherPawnAttacks
+										) - RookMUnits);
 									pieceAttacksXray = bbAttacks.GetRookAttacks(index, all & ~(pieceAttacks & others)
 										) & ~pieceAttacks;
 									if ((pieceAttacksXray & (board.queens | board.kings) & others) != 0)
@@ -572,14 +676,14 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 									{
 										positional[color] += RookConnect;
 									}
-									pieceAttacks = BitboardUtils.Column[column];
-									if ((pieceAttacks & board.pawns) == 0)
+									long columnAttacks = BitboardUtils.Column[column];
+									if ((columnAttacks & board.pawns) == 0)
 									{
 										positional[color] += RookColumnOpen;
 									}
 									else
 									{
-										if ((pieceAttacks & board.pawns & mines) == 0)
+										if ((columnAttacks & board.pawns & mines) == 0)
 										{
 											positional[color] += RookColumnSemiopen;
 										}
@@ -590,12 +694,8 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 									if ((square & board.queens) != 0)
 									{
 										center[color] += queenIndexValue[pcsqIndex];
-										material[color] += Queen;
-										pieceAttacks = bbAttacks.GetRookAttacks(index, all) | bbAttacks.GetBishopAttacks(
-											index, all);
-										auxInt = BitboardUtils.PopCount(pieceAttacks & ~mines & ~pawnAttacks[1 - color]) 
-											- QueenMUnits;
-										mobility[color] += QueenM * auxInt;
+										mobility[color] += QueenM * (BitboardUtils.PopCount(pieceAttacks & ~mines & ~otherPawnAttacks
+											) - QueenMUnits);
 										if ((pieceAttacks & squaresNearKing[1 - color]) != 0)
 										{
 											kingSafety[color] += QueenAttacksKing;
@@ -612,10 +712,9 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 									{
 										if ((square & board.kings) != 0)
 										{
-											pieceAttacks = bbAttacks.king[index];
 											center[color] += kingIndexValue[pcsqIndex];
 											// TODO
-											if ((square & (isWhite ? BitboardUtils.Rank[1] : BitboardUtils.Rank[7])) != 0)
+											if ((square & (isWhite ? BitboardUtils.Rank[0] : BitboardUtils.Rank[7])) != 0)
 											{
 												positional[color] += KingPawnNear * BitboardUtils.PopCount(pieceAttacks & mines &
 													 board.pawns);
@@ -658,16 +757,15 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			value += ((256 - gamePhase) * E(oe)) / (256 * 100);
 			if (debug)
 			{
-				logger.Debug("\n" + board.ToString());
-				logger.Debug(board.GetFen());
+				logger.Debug(debugSB);
 				logger.Debug("materialValue          = " + (material[0] - material[1]));
 				logger.Debug("pawnMaterialValue      = " + (pawnMaterial[0] - pawnMaterial[1]));
 				logger.Debug("centerOpening          = " + O(center[0] - center[1]));
 				logger.Debug("centerEndgame          = " + E(center[0] - center[1]));
 				logger.Debug("positionalOpening      = " + O(positional[0] - positional[1]));
 				logger.Debug("positionalEndgame      = " + E(positional[0] - positional[1]));
-				logger.Debug("attacksO 				 = " + O(attacks[0] - attacks[1]));
-				logger.Debug("attacksE 				 = " + E(attacks[0] - attacks[1]));
+				logger.Debug("attacksO               = " + O(attacks[0] - attacks[1]));
+				logger.Debug("attacksE               = " + E(attacks[0] - attacks[1]));
 				logger.Debug("mobilityO              = " + O(mobility[0] - mobility[1]));
 				logger.Debug("mobilityE              = " + E(mobility[0] - mobility[1]));
 				logger.Debug("pawnsO                 = " + O(pawnStructure[0] - pawnStructure[1])
@@ -680,16 +778,17 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 					0]] * kingSafety[0] - KingSafetyPonder[kingAttackersCount[1]] * kingSafety[1]));
 				logger.Debug("kingSafetyValueE       = " + E(KingSafetyPonder[kingAttackersCount[
 					0]] * kingSafety[0] - KingSafetyPonder[kingAttackersCount[1]] * kingSafety[1]));
-				logger.Debug("HungPiecesO 		     = " + O((BitboardUtils.PopCount(superiorPieceAttacked
+				logger.Debug("HungPiecesO            = " + O((BitboardUtils.PopCount(superiorPieceAttacked
 					[0]) >= 2 ? HungPieces : 0) - (BitboardUtils.PopCount(superiorPieceAttacked[1]) 
 					>= 2 ? HungPieces : 0)));
-				logger.Debug("HungPiecesE 		     = " + O((BitboardUtils.PopCount(superiorPieceAttacked
+				logger.Debug("HungPiecesE            = " + O((BitboardUtils.PopCount(superiorPieceAttacked
 					[0]) >= 2 ? HungPieces : 0) - (BitboardUtils.PopCount(superiorPieceAttacked[1]) 
 					>= 2 ? HungPieces : 0)));
 				logger.Debug("gamePhase              = " + gamePhase);
 				logger.Debug("tempo                  = " + (board.GetTurn() ? Tempo : -Tempo));
 				logger.Debug("value                  = " + value);
 			}
+			System.Diagnostics.Debug.Assert(Math.Abs(value) < Evaluator.Victory);
 			return value;
 		}
 	}
