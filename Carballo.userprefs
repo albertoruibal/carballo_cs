@@ -1,10 +1,30 @@
 ﻿<Properties GitUserInfo="UsingGIT">
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="sharpen-all-options">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release|x86" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="com/alonsoruibal/chess/uci/Uci.cs">
     <Files>
-      <File FileName="com/alonsoruibal/chess/book/FileBook.cs" Line="82" Column="28" />
-      <File FileName="sharpen-all-options" Line="44" Column="3" />
+      <File FileName="com/alonsoruibal/chess/uci/Uci.cs" Line="40" Column="71" />
     </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State expanded="True">
+          <Node name="Carballo" expanded="True">
+            <Node name="com" expanded="True">
+              <Node name="alonsoruibal" expanded="True">
+                <Node name="chess" expanded="True">
+                  <Node name="book" expanded="True" />
+                  <Node name="search" expanded="True" />
+                  <Node name="uci" expanded="True">
+                    <Node name="Uci.cs" selected="True" />
+                  </Node>
+                </Node>
+              </Node>
+            </Node>
+            <Node name="Sharpen" expanded="True" />
+            <Node name="Util" expanded="True" />
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />

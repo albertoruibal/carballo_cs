@@ -4,14 +4,19 @@ using Sharpen;
 
 namespace Com.Alonsoruibal.Chess.Movesort
 {
-	/// <summary>
-	/// Sort Moves based on heuristics
-	/// short first GOOD captures (a piece of less value captures other of more value)
-	/// <p/>
-	/// SEE captures, and move captures with SEE&lt;0 to the end
-	/// </summary>
+	/// <summary>The Move Iterator generates moves as needed.</summary>
+	/// <remarks>
+	/// The Move Iterator generates moves as needed. It is separated into phases.
+	/// It sets the check flag on moves. It also checks if the move is legal before generating it.
+	/// </remarks>
 	public class MoveIterator
 	{
+		public const int GenerateAll = 0;
+
+		public const int GenerateCapturesPromos = 1;
+
+		public const int GenerateCapturesPromosChecks = 2;
+
 		public const int PhaseTt = 0;
 
 		public const int PhaseGenCaptures = 1;
@@ -20,17 +25,21 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		public const int PhaseEqualCaptures = 3;
 
-		public const int PhaseGenNoncaptures = 4;
+		public const int PhaseGenNonCaptures = 4;
 
 		public const int PhaseKiller1 = 5;
 
 		public const int PhaseKiller2 = 6;
 
-		public const int PhaseNoncaptures = 7;
+		public const int PhaseKiller3 = 7;
 
-		public const int PhaseBadCaptures = 8;
+		public const int PhaseKiller4 = 8;
 
-		public const int PhaseEnd = 9;
+		public const int PhaseNonCaptures = 9;
+
+		public const int PhaseBadCaptures = 10;
+
+		public const int PhaseEnd = 11;
 
 		private static readonly int[] VictimPieceValues = new int[] { 0, 100, 325, 330, 500
 			, 975, 10000 };
@@ -46,7 +55,11 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private Board board;
 
+		private AttacksInfo attacksInfo;
+
 		private int ttMove;
+
+		private int movesToGenerate;
 
 		private int lastMoveSee;
 
@@ -54,23 +67,21 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private int killer2;
 
+		private int killer3;
+
+		private int killer4;
+
 		private bool foundKiller1;
 
 		private bool foundKiller2;
 
-		private bool quiescence;
+		private bool foundKiller3;
 
-		private bool generateChecks;
+		private bool foundKiller4;
 
-		private bool checkEvasion;
+		public bool checkEvasion;
 
-		private int nonCaptureIndex;
-
-		private int goodCaptureIndex;
-
-		private int equalCaptureIndex;
-
-		private int badCaptureIndex;
+		private bool turn;
 
 		private long all;
 
@@ -78,519 +89,147 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private long others;
 
-		private long[] attacks = new long[64];
+		private int goodCaptureIndex;
 
-		public int[] goodCaptures = new int[256];
+		private int equalCaptureIndex;
 
-		public int[] goodCapturesSee = new int[256];
+		private int badCaptureIndex;
 
-		public int[] goodCapturesScores = new int[256];
+		private int nonCaptureIndex;
 
-		public int[] badCaptures = new int[256];
+		private int[] goodCaptures = new int[256];
 
-		public int[] badCapturesSee = new int[256];
+		private int[] goodCapturesSee = new int[256];
 
-		public int[] badCapturesScores = new int[256];
+		private int[] goodCapturesScores = new int[256];
 
-		public int[] equalCaptures = new int[256];
+		private int[] badCaptures = new int[256];
 
-		public int[] equalCapturesSee = new int[256];
+		private int[] badCapturesSee = new int[256];
 
-		public int[] equalCapturesScores = new int[256];
+		private int[] badCapturesScores = new int[256];
 
-		public int[] nonCaptures = new int[256];
+		private int[] equalCaptures = new int[256];
 
-		public int[] nonCapturesScores = new int[256];
+		private int[] equalCapturesSee = new int[256];
+
+		private int[] equalCapturesScores = new int[256];
+
+		private int[] nonCaptures = new int[256];
+
+		private int[] nonCapturesSee = new int[256];
+
+		private int[] nonCapturesScores = new int[256];
 
 		private int depth;
 
-		internal SortInfo sortInfo;
+		private SortInfo sortInfo;
 
-		internal int phase;
+		private int phase;
 
-		internal BitboardAttacks bbAttacks;
+		private BitboardAttacks bbAttacks;
 
-		//	private static final Logger logger = Logger.getLogger(MoveIterator.class);
-		// Stores slider pieces attacks
+		//
+		// Kind of moves to generate
+		// In check evasions all moves are always generated
+		// Generates only good/equal captures and queen promotions
+		// Generates only good/equal captures, queen promotions and checks
+		//
+		// Move generation phases
+		//
 		// Stores captures and queen promotions
 		// Stores captures and queen promotions
 		// Stores captures and queen promotions
 		// Stores non captures and underpromotions
-		public virtual int GetPhase()
+		public virtual int GetLastMoveSee()
 		{
-			return phase;
+			return lastMoveSee;
 		}
 
-		public MoveIterator(Board board, SortInfo sortInfo, int depth)
-		{
-			this.sortInfo = sortInfo;
-			this.board = board;
-			this.depth = depth;
-			bbAttacks = BitboardAttacks.GetInstance();
-		}
-
-		public virtual void SetBoard(Board board)
-		{
-			this.board = board;
-		}
-
-		/// <summary>Generates captures and tactical moves (not underpromotions)</summary>
-		public virtual void GenerateCaptures()
-		{
-			// logger.debug(board);
-			all = board.GetAll();
-			// only for clearity
-			mines = board.GetMines();
-			others = board.GetOthers();
-			byte index = 0;
-			long square = unchecked((long)(0x1L));
-			while (square != 0)
-			{
-				attacks[index] = 0;
-				if (board.GetTurn() == ((square & board.whites) != 0))
-				{
-					if ((square & board.rooks) != 0)
-					{
-						// Rook
-						attacks[index] = bbAttacks.GetRookAttacks(index, all);
-						GenerateCapturesFromAttacks(Move.Rook, index, attacks[index] & others);
-					}
-					else
-					{
-						if ((square & board.bishops) != 0)
-						{
-							// Bishop
-							attacks[index] = bbAttacks.GetBishopAttacks(index, all);
-							GenerateCapturesFromAttacks(Move.Bishop, index, attacks[index] & others);
-						}
-						else
-						{
-							if ((square & board.queens) != 0)
-							{
-								// Queen
-								attacks[index] = bbAttacks.GetRookAttacks(index, all) | bbAttacks.GetBishopAttacks
-									(index, all);
-								GenerateCapturesFromAttacks(Move.Queen, index, attacks[index] & others);
-							}
-							else
-							{
-								if ((square & board.kings) != 0)
-								{
-									// King
-									GenerateCapturesFromAttacks(Move.King, index, bbAttacks.king[index] & others);
-								}
-								else
-								{
-									if ((square & board.knights) != 0)
-									{
-										// Knight
-										GenerateCapturesFromAttacks(Move.Knight, index, bbAttacks.knight[index] & others);
-									}
-									else
-									{
-										if ((square & board.pawns) != 0)
-										{
-											// Pawns
-											if ((square & board.whites) != 0)
-											{
-												GeneratePawnCapturesAndGoodPromos(index, (bbAttacks.pawnUpwards[index] & (others 
-													| board.GetPassantSquare())) | (((square << 8) & all) == 0 ? (square << 8) : 0), 
-													board.GetPassantSquare());
-											}
-											else
-											{
-												GeneratePawnCapturesAndGoodPromos(index, (bbAttacks.pawnDownwards[index] & (others
-													 | board.GetPassantSquare())) | ((((long)(((ulong)square) >> 8)) & all) == 0 ? (
-													(long)(((ulong)square) >> 8)) : 0), board.GetPassantSquare());
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				square <<= 1;
-				index++;
-			}
-		}
-
-		/// <summary>Generates underpromotions and non tactical moves</summary>
-		public virtual void GenerateNonCaptures()
-		{
-			all = board.GetAll();
-			// only for clearity
-			mines = board.GetMines();
-			others = board.GetOthers();
-			int index = 0;
-			long square = unchecked((long)(0x1L));
-			while (square != 0)
-			{
-				if (board.GetTurn() == ((square & board.whites) != 0))
-				{
-					if ((square & board.rooks) != 0)
-					{
-						// Rook
-						GenerateNonCapturesFromAttacks(Move.Rook, index, attacks[index] & ~all);
-					}
-					else
-					{
-						if ((square & board.bishops) != 0)
-						{
-							// Bishop
-							GenerateNonCapturesFromAttacks(Move.Bishop, index, attacks[index] & ~all);
-						}
-						else
-						{
-							if ((square & board.queens) != 0)
-							{
-								// Queen
-								GenerateNonCapturesFromAttacks(Move.Queen, index, attacks[index] & ~all);
-							}
-							else
-							{
-								if ((square & board.kings) != 0)
-								{
-									// King
-									GenerateNonCapturesFromAttacks(Move.King, index, bbAttacks.king[index] & ~all);
-								}
-								else
-								{
-									if ((square & board.knights) != 0)
-									{
-										// Knight
-										GenerateNonCapturesFromAttacks(Move.Knight, index, bbAttacks.knight[index] & ~all
-											);
-									}
-								}
-							}
-						}
-					}
-					if ((square & board.pawns) != 0)
-					{
-						// Pawns
-						if ((square & board.whites) != 0)
-						{
-							GeneratePawnNonCapturesAndBadPromos(index, (bbAttacks.pawnUpwards[index] & others
-								) | (((square << 8) & all) == 0 ? (square << 8) : 0) | ((square & BitboardUtils.
-								b2_d) != 0 && (((square << 8) | (square << 16)) & all) == 0 ? (square << 16) : 0
-								));
-						}
-						else
-						{
-							GeneratePawnNonCapturesAndBadPromos(index, (bbAttacks.pawnDownwards[index] & others
-								) | ((((long)(((ulong)square) >> 8)) & all) == 0 ? ((long)(((ulong)square) >> 8)
-								) : 0) | ((square & BitboardUtils.b2_u) != 0 && ((((long)(((ulong)square) >> 8))
-								 | ((long)(((ulong)square) >> 16))) & all) == 0 ? ((long)(((ulong)square) >> 16)
-								) : 0));
-						}
-					}
-				}
-				square <<= 1;
-				index++;
-			}
-			square = board.kings & mines;
-			// my king
-			int myKingIndex = -1;
-			// Castling: disabled when in check or squares attacked
-			if ((((all & (board.GetTurn() ? unchecked((long)(0x06L)) : unchecked((long)(0x0600000000000000L
-				)))) == 0 && (board.GetTurn() ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling
-				()))))
-			{
-				myKingIndex = BitboardUtils.Square2Index(square);
-				if (!board.GetCheck() && !bbAttacks.IsIndexAttacked(board, unchecked((byte)(myKingIndex
-					 - 1)), board.GetTurn()) && !bbAttacks.IsIndexAttacked(board, unchecked((byte)(myKingIndex
-					 - 2)), board.GetTurn()))
-				{
-					AddNonCapturesAndBadPromos(Move.King, myKingIndex, myKingIndex - 2, 0, false, Move
-						.TypeKingsideCastling);
-				}
-			}
-			if ((((all & (board.GetTurn() ? unchecked((long)(0x70L)) : unchecked((long)(0x7000000000000000L
-				)))) == 0 && (board.GetTurn() ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling
-				()))))
-			{
-				if (myKingIndex == -1)
-				{
-					myKingIndex = BitboardUtils.Square2Index(square);
-				}
-				if (!board.GetCheck() && !bbAttacks.IsIndexAttacked(board, unchecked((byte)(myKingIndex
-					 + 1)), board.GetTurn()) && !bbAttacks.IsIndexAttacked(board, unchecked((byte)(myKingIndex
-					 + 2)), board.GetTurn()))
-				{
-					AddNonCapturesAndBadPromos(Move.King, myKingIndex, myKingIndex + 2, 0, false, Move
-						.TypeQueensideCastling);
-				}
-			}
-		}
-
-		/// <summary>Generates moves from an attack mask</summary>
-		private void GenerateCapturesFromAttacks(int pieceMoved, int fromIndex, long attacks
-			)
-		{
-			while (attacks != 0)
-			{
-				long to = BitboardUtils.Lsb(attacks);
-				AddCapturesAndGoodPromos(pieceMoved, fromIndex, BitboardUtils.Square2Index(to), to
-					, true, 0);
-				attacks ^= to;
-			}
-		}
-
-		private void GenerateNonCapturesFromAttacks(int pieceMoved, int fromIndex, long attacks
-			)
-		{
-			while (attacks != 0)
-			{
-				long to = BitboardUtils.Lsb(attacks);
-				AddNonCapturesAndBadPromos(pieceMoved, fromIndex, BitboardUtils.Square2Index(to), 
-					to, false, 0);
-				attacks ^= to;
-			}
-		}
-
-		private void GeneratePawnCapturesAndGoodPromos(int fromIndex, long attacks, long 
-			passant)
-		{
-			while (attacks != 0)
-			{
-				long to = BitboardUtils.Lsb(attacks);
-				if ((to & passant) != 0)
-				{
-					AddCapturesAndGoodPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), to
-						, true, Move.TypePassant);
-				}
-				else
-				{
-					bool capture = (to & others) != 0;
-					if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
-					{
-						AddCapturesAndGoodPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), to
-							, capture, Move.TypePromotionQueen);
-					}
-					else
-					{
-						if (capture)
-						{
-							AddCapturesAndGoodPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), to
-								, capture, 0);
-						}
-					}
-				}
-				attacks ^= to;
-			}
-		}
-
-		private void GeneratePawnNonCapturesAndBadPromos(int fromIndex, long attacks)
-		{
-			while (attacks != 0)
-			{
-				long to = BitboardUtils.Lsb(attacks);
-				bool capture = (to & others) != 0;
-				if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
-				{
-					AddNonCapturesAndBadPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), 
-						to, capture, Move.TypePromotionKnight);
-					AddNonCapturesAndBadPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), 
-						to, capture, Move.TypePromotionRook);
-					AddNonCapturesAndBadPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), 
-						to, capture, Move.TypePromotionBishop);
-				}
-				else
-				{
-					if (!capture)
-					{
-						AddNonCapturesAndBadPromos(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), 
-							to, capture, 0);
-					}
-				}
-				attacks ^= to;
-			}
-		}
-
-		private void AddNonCapturesAndBadPromos(int pieceMoved, int fromIndex, int toIndex
-			, long to, bool capture, int moveType)
-		{
-			int move = Move.GenMove(fromIndex, toIndex, pieceMoved, capture, moveType);
-			if (move == killer1)
-			{
-				foundKiller1 = true;
-			}
-			else
-			{
-				if (move == killer2)
-				{
-					foundKiller2 = true;
-				}
-				else
-				{
-					if (move != ttMove)
-					{
-						// Score non captures
-						int score = sortInfo.GetMoveScore(move);
-						if (moveType == Move.TypePromotionKnight || moveType == Move.TypePromotionRook ||
-							 moveType == Move.TypePromotionBishop)
-						{
-							score -= ScoreUnderpromotion;
-						}
-						nonCaptures[nonCaptureIndex] = move;
-						nonCapturesScores[nonCaptureIndex] = score;
-						nonCaptureIndex++;
-					}
-				}
-			}
-		}
-
-		private void AddCapturesAndGoodPromos(int pieceMoved, int fromIndex, int toIndex, 
-			long to, bool capture, int moveType)
-		{
-			int move = Move.GenMove(fromIndex, toIndex, pieceMoved, capture, moveType);
-			if (move != ttMove)
-			{
-				// Score captures
-				int pieceCaptured = 0;
-				if ((to & board.knights) != 0)
-				{
-					pieceCaptured = Move.Knight;
-				}
-				else
-				{
-					if ((to & board.bishops) != 0)
-					{
-						pieceCaptured = Move.Bishop;
-					}
-					else
-					{
-						if ((to & board.rooks) != 0)
-						{
-							pieceCaptured = Move.Rook;
-						}
-						else
-						{
-							if ((to & board.queens) != 0)
-							{
-								pieceCaptured = Move.Queen;
-							}
-							else
-							{
-								if (capture)
-								{
-									pieceCaptured = Move.Pawn;
-								}
-							}
-						}
-					}
-				}
-				int see = 0;
-				if (capture)
-				{
-					see = board.See(fromIndex, toIndex, pieceMoved, pieceCaptured);
-				}
-				if (see >= 0)
-				{
-					int score = 0;
-					// Order GOOD captures by MVV/LVA (Hyatt dixit)
-					if (capture)
-					{
-						score = VictimPieceValues[pieceCaptured] - AggressorPieceValues[pieceMoved];
-					}
-					if (see > 0 || moveType == Move.TypePromotionQueen)
-					{
-						if (moveType == Move.TypePromotionQueen)
-						{
-							score += ScorePromotionQueen;
-						}
-						goodCaptures[goodCaptureIndex] = move;
-						goodCapturesSee[goodCaptureIndex] = see;
-						goodCapturesScores[goodCaptureIndex] = score;
-						goodCaptureIndex++;
-					}
-					else
-					{
-						equalCaptures[equalCaptureIndex] = move;
-						equalCapturesSee[equalCaptureIndex] = see;
-						equalCapturesScores[equalCaptureIndex] = score;
-						equalCaptureIndex++;
-					}
-				}
-				else
-				{
-					badCaptures[badCaptureIndex] = move;
-					badCapturesSee[badCaptureIndex] = see;
-					badCapturesScores[badCaptureIndex] = see;
-					badCaptureIndex++;
-				}
-			}
-		}
-
-		/// <summary>Moves are sorted ascending (best moves at the end)</summary>
 		public virtual void GenMoves(int ttMove)
 		{
-			GenMoves(ttMove, false, true);
+			GenMoves(ttMove, GenerateAll);
 		}
 
-		public virtual void GenMoves(int ttMove, bool quiescence, bool generateChecks)
+		public virtual void GenMoves(int ttMove, int movesToGenerate)
 		{
 			this.ttMove = ttMove;
-			foundKiller1 = false;
-			foundKiller2 = false;
-			this.quiescence = quiescence;
-			this.generateChecks = generateChecks;
-			this.checkEvasion = board.GetCheck();
+			this.movesToGenerate = movesToGenerate;
+			phase = PhaseTt;
+			checkEvasion = board.GetCheck();
+			lastMoveSee = 0;
+		}
+
+		private void InitMoveGen()
+		{
+			attacksInfo.Build(board);
 			killer1 = sortInfo.killerMove1[depth];
 			killer2 = sortInfo.killerMove2[depth];
-			phase = 0;
-			lastMoveSee = 0;
+			killer3 = depth < 2 ? Move.None : sortInfo.killerMove1[depth - 2];
+			killer4 = depth < 2 ? Move.None : sortInfo.killerMove2[depth - 2];
+			foundKiller1 = false;
+			foundKiller2 = false;
+			foundKiller3 = false;
+			foundKiller4 = false;
 			goodCaptureIndex = 0;
 			badCaptureIndex = 0;
 			equalCaptureIndex = 0;
 			nonCaptureIndex = 0;
+			// Only for clarity
+			turn = board.GetTurn();
+			all = board.GetAll();
+			mines = board.GetMines();
+			others = board.GetOthers();
 		}
 
 		public virtual int Next()
 		{
-			int maxScore;
-			int bestIndex;
+			int move;
 			switch (phase)
 			{
 				case PhaseTt:
 				{
 					phase++;
-					if (ttMove != 0)
+					if (ttMove != Move.None)
 					{
-						if (Move.IsCapture(ttMove))
+						lastMoveSee = Move.IsCapture(ttMove) || Move.IsCheck(ttMove) ? board.See(ttMove) : 
+							0;
+						if (checkEvasion || (movesToGenerate == GenerateAll) || (Move.GetMoveType(ttMove)
+							 == Move.TypePromotionQueen) || ((movesToGenerate == GenerateCapturesPromos) && 
+							Move.IsCapture(ttMove) && (lastMoveSee >= 0)) || ((movesToGenerate == GenerateCapturesPromosChecks
+							) && (Move.IsCapture(ttMove) || Move.IsCheck(ttMove)) && (lastMoveSee >= 0)))
 						{
-							lastMoveSee = board.See(ttMove);
+							//
+							//
+							//
+							return ttMove;
 						}
-						return ttMove;
 					}
 					goto case PhaseGenCaptures;
 				}
 
 				case PhaseGenCaptures:
 				{
+					InitMoveGen();
+					if (checkEvasion)
+					{
+						GenerateCheckEvasionCaptures();
+					}
+					else
+					{
+						GenerateCaptures();
+					}
 					phase++;
-					GenerateCaptures();
 					goto case PhaseGoodCapturesAndPromos;
 				}
 
 				case PhaseGoodCapturesAndPromos:
 				{
-					maxScore = ScoreLowest;
-					bestIndex = -1;
-					for (int i = 0; i < goodCaptureIndex; i++)
+					move = PickMoveFromArray(goodCaptureIndex, goodCaptures, goodCapturesScores, goodCapturesSee
+						);
+					if (move != Move.None)
 					{
-						if (goodCapturesScores[i] > maxScore)
-						{
-							maxScore = goodCapturesScores[i];
-							bestIndex = i;
-						}
-					}
-					if (bestIndex != -1)
-					{
-						goodCapturesScores[bestIndex] = ScoreLowest;
-						lastMoveSee = goodCapturesSee[bestIndex];
-						return goodCaptures[bestIndex];
+						return move;
 					}
 					phase++;
 					goto case PhaseEqualCaptures;
@@ -598,36 +237,32 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 				case PhaseEqualCaptures:
 				{
-					maxScore = ScoreLowest;
-					bestIndex = -1;
-					for (int i_1 = 0; i_1 < equalCaptureIndex; i_1++)
+					move = PickMoveFromArray(equalCaptureIndex, equalCaptures, equalCapturesScores, equalCapturesSee
+						);
+					if (move != Move.None)
 					{
-						if (equalCapturesScores[i_1] > maxScore)
-						{
-							maxScore = equalCapturesScores[i_1];
-							bestIndex = i_1;
-						}
-					}
-					if (bestIndex != -1)
-					{
-						equalCapturesScores[bestIndex] = ScoreLowest;
-						lastMoveSee = equalCapturesSee[bestIndex];
-						return equalCaptures[bestIndex];
+						return move;
 					}
 					phase++;
-					goto case PhaseGenNoncaptures;
+					goto case PhaseGenNonCaptures;
 				}
 
-				case PhaseGenNoncaptures:
+				case PhaseGenNonCaptures:
 				{
-					phase++;
-					if (quiescence && !generateChecks && !checkEvasion)
+					if (checkEvasion)
 					{
-						phase = PhaseEnd;
-						return 0;
+						GenerateCheckEvasionsNonCaptures();
 					}
-					lastMoveSee = 0;
-					GenerateNonCaptures();
+					else
+					{
+						if (movesToGenerate == GenerateCapturesPromos)
+						{
+							phase = PhaseEnd;
+							return Move.None;
+						}
+						GenerateNonCaptures();
+					}
+					phase++;
 					goto case PhaseKiller1;
 				}
 
@@ -636,6 +271,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller1)
 					{
+						lastMoveSee = Move.IsCheck(killer1) ? board.See(killer1) : 0;
 						return killer1;
 					}
 					goto case PhaseKiller2;
@@ -646,27 +282,41 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller2)
 					{
+						lastMoveSee = Move.IsCheck(killer2) ? board.See(killer2) : 0;
 						return killer2;
 					}
-					goto case PhaseNoncaptures;
+					goto case PhaseKiller3;
 				}
 
-				case PhaseNoncaptures:
+				case PhaseKiller3:
 				{
-					maxScore = ScoreLowest;
-					bestIndex = -1;
-					for (int i_2 = 0; i_2 < nonCaptureIndex; i_2++)
+					phase++;
+					if (foundKiller3)
 					{
-						if (nonCapturesScores[i_2] > maxScore)
-						{
-							maxScore = nonCapturesScores[i_2];
-							bestIndex = i_2;
-						}
+						lastMoveSee = Move.IsCheck(killer3) ? board.See(killer3) : 0;
+						return killer3;
 					}
-					if (bestIndex != -1)
+					goto case PhaseKiller4;
+				}
+
+				case PhaseKiller4:
+				{
+					phase++;
+					if (foundKiller4)
 					{
-						nonCapturesScores[bestIndex] = ScoreLowest;
-						return nonCaptures[bestIndex];
+						lastMoveSee = Move.IsCheck(killer4) ? board.See(killer4) : 0;
+						return killer4;
+					}
+					goto case PhaseNonCaptures;
+				}
+
+				case PhaseNonCaptures:
+				{
+					move = PickMoveFromArray(nonCaptureIndex, nonCaptures, nonCapturesScores, nonCapturesSee
+						);
+					if (move != Move.None)
+					{
+						return move;
 					}
 					phase++;
 					goto case PhaseBadCaptures;
@@ -674,31 +324,714 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 				case PhaseBadCaptures:
 				{
-					maxScore = ScoreLowest;
-					bestIndex = -1;
-					for (int i_3 = 0; i_3 < badCaptureIndex; i_3++)
+					move = PickMoveFromArray(badCaptureIndex, badCaptures, badCapturesScores, badCapturesSee
+						);
+					if (move != Move.None)
 					{
-						if (badCapturesScores[i_3] > maxScore)
+						return move;
+					}
+					phase = PhaseEnd;
+					return Move.None;
+				}
+			}
+			return Move.None;
+		}
+
+		private int PickMoveFromArray(int arrayLength, int[] arrayMoves, int[] arrayScores
+			, int[] arraySee)
+		{
+			if (arrayLength == 0)
+			{
+				return Move.None;
+			}
+			int maxScore = ScoreLowest;
+			int bestIndex = -1;
+			for (int i = 0; i < arrayLength; i++)
+			{
+				if (arrayScores[i] > maxScore)
+				{
+					maxScore = arrayScores[i];
+					bestIndex = i;
+				}
+			}
+			if (bestIndex != -1)
+			{
+				arrayScores[bestIndex] = ScoreLowest;
+				int move = arrayMoves[bestIndex];
+				lastMoveSee = arraySee[bestIndex];
+				return move;
+			}
+			else
+			{
+				return Move.None;
+			}
+		}
+
+		public MoveIterator(Board board, AttacksInfo attacksInfo, SortInfo sortInfo, int 
+			depth)
+		{
+			this.board = board;
+			this.attacksInfo = attacksInfo;
+			this.sortInfo = sortInfo;
+			this.depth = depth;
+			bbAttacks = BitboardAttacks.GetInstance();
+		}
+
+		public virtual void SetBoard(Board board)
+		{
+			this.board = board;
+		}
+
+		/// <summary>Generates captures and good promos</summary>
+		public virtual void GenerateCaptures()
+		{
+			long square = unchecked((long)(0x1L));
+			for (int index = 0; index < 64; index++)
+			{
+				if ((square & mines) != 0)
+				{
+					if ((square & board.rooks) != 0)
+					{
+						// Rook
+						GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.attacksFromSquare[
+							index] & others, true);
+					}
+					else
+					{
+						if ((square & board.bishops) != 0)
 						{
-							maxScore = badCapturesScores[i_3];
-							bestIndex = i_3;
+							// Bishop
+							GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.attacksFromSquare
+								[index] & others, true);
+						}
+						else
+						{
+							if ((square & board.queens) != 0)
+							{
+								// Queen
+								GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.attacksFromSquare
+									[index] & others, true);
+							}
+							else
+							{
+								if ((square & board.kings) != 0)
+								{
+									// King
+									GenerateMovesFromAttacks(Move.King, index, square, attacksInfo.attacksFromSquare[
+										index] & others & ~attacksInfo.attackedSquares[turn ? 1 : 0], true);
+								}
+								else
+								{
+									if ((square & board.knights) != 0)
+									{
+										// Knight
+										GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.attacksFromSquare
+											[index] & others, true);
+									}
+									else
+									{
+										if ((square & board.pawns) != 0)
+										{
+											// Pawns
+											if (turn)
+											{
+												GeneratePawnCapturesOrGoodPromos(index, square, (attacksInfo.attacksFromSquare[index
+													] & (others | board.GetPassantSquare())) | (((square & BitboardUtils.b2_u) != 0)
+													 && (((square << 8) & all) == 0) ? (square << 8) : 0), board.GetPassantSquare());
+											}
+											else
+											{
+												//
+												//
+												// Pushes only if promotion
+												GeneratePawnCapturesOrGoodPromos(index, square, (attacksInfo.attacksFromSquare[index
+													] & (others | board.GetPassantSquare())) | (((square & BitboardUtils.b2_d) != 0)
+													 && ((((long)(((ulong)square) >> 8)) & all) == 0) ? ((long)(((ulong)square) >> 8
+													)) : 0), board.GetPassantSquare());
+											}
+										}
+									}
+								}
+							}
 						}
 					}
-					if (bestIndex != -1)
+				}
+				//
+				//
+				// Pushes only if promotion
+				square <<= 1;
+			}
+		}
+
+		/// <summary>Generates non tactical moves</summary>
+		public virtual void GenerateNonCaptures()
+		{
+			long square = unchecked((long)(0x1L));
+			for (int index = 0; index < 64; index++)
+			{
+				if ((square & mines) != 0)
+				{
+					if ((square & board.rooks) != 0)
 					{
-						badCapturesScores[bestIndex] = ScoreLowest;
-						lastMoveSee = badCapturesSee[bestIndex];
-						return badCaptures[bestIndex];
+						// Rook
+						GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.attacksFromSquare[
+							index] & ~all, false);
 					}
+					else
+					{
+						if ((square & board.bishops) != 0)
+						{
+							// Bishop
+							GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.attacksFromSquare
+								[index] & ~all, false);
+						}
+						else
+						{
+							if ((square & board.queens) != 0)
+							{
+								// Queen
+								GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.attacksFromSquare
+									[index] & ~all, false);
+							}
+							else
+							{
+								if ((square & board.kings) != 0)
+								{
+									// King
+									GenerateMovesFromAttacks(Move.King, index, square, attacksInfo.attacksFromSquare[
+										index] & ~all & ~attacksInfo.attackedSquares[turn ? 1 : 0], false);
+								}
+								else
+								{
+									if ((square & board.knights) != 0)
+									{
+										// Knight
+										GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.attacksFromSquare
+											[index] & ~all, false);
+									}
+								}
+							}
+						}
+					}
+					if ((square & board.pawns) != 0)
+					{
+						// Pawns excluding the already generated promos
+						if (turn)
+						{
+							GeneratePawnNonCapturesAndBadPromos(index, square, (((square << 8) & all) == 0 ? 
+								(square << 8) : 0) | ((square & BitboardUtils.b2_d) != 0 && (((square << 8) | (square
+								 << 16)) & all) == 0 ? (square << 16) : 0));
+						}
+						else
+						{
+							GeneratePawnNonCapturesAndBadPromos(index, square, ((((long)(((ulong)square) >> 8
+								)) & all) == 0 ? ((long)(((ulong)square) >> 8)) : 0) | ((square & BitboardUtils.
+								b2_u) != 0 && ((((long)(((ulong)square) >> 8)) | ((long)(((ulong)square) >> 16))
+								) & all) == 0 ? ((long)(((ulong)square) >> 16)) : 0));
+						}
+					}
+				}
+				square <<= 1;
+			}
+			// Castling: disabled when in check or squares attacked
+			if ((((all & (turn ? unchecked((long)(0x06L)) : unchecked((long)(0x0600000000000000L
+				)))) == 0 && (turn ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling
+				()))) && ((attacksInfo.attackedSquares[turn ? 1 : 0] & (turn ? unchecked((long)(
+				0x0EL)) : unchecked((long)(0x0E00000000000000L)))) == 0))
+			{
+				//
+				//
+				AddMove(Move.King, attacksInfo.myKingIndex, board.kings & mines, (long)(((ulong)(
+					board.kings & mines)) >> 2), false, Move.TypeKingsideCastling);
+			}
+			if ((((all & (turn ? unchecked((long)(0x70L)) : unchecked((long)(0x7000000000000000L
+				)))) == 0 && (turn ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling
+				()))) && ((attacksInfo.attackedSquares[turn ? 1 : 0] & (turn ? unchecked((long)(
+				0x34L)) : unchecked((long)(0x3400000000000000L)))) == 0))
+			{
+				//
+				AddMove(Move.King, attacksInfo.myKingIndex, board.kings & mines, (board.kings & mines
+					) << 2, false, Move.TypeQueensideCastling);
+			}
+		}
+
+		public virtual void GenerateCheckEvasionCaptures()
+		{
+			// King can capture one of the checking pieces if two pieces giving check
+			GenerateMovesFromAttacks(Move.King, attacksInfo.myKingIndex, board.kings & mines, 
+				others & attacksInfo.attacksFromSquare[attacksInfo.myKingIndex] & ~attacksInfo.attackedSquares
+				[turn ? 1 : 0], true);
+			if (BitboardUtils.PopCount(attacksInfo.piecesGivingCheck) == 1)
+			{
+				long square = 1;
+				for (int index = 0; index < 64; index++)
+				{
+					if ((square & mines) != 0 && (square & board.kings) == 0)
+					{
+						if ((square & board.pawns) != 0)
+						{
+							// Pawns
+							long destinySquares = 0;
+							// Good promotion interposes to the check
+							if ((square & (turn ? BitboardUtils.b2_u : BitboardUtils.b2_d)) != 0)
+							{
+								// Pawn about to promote
+								destinySquares = attacksInfo.interposeCheckSquares & (turn ? (((square << 8) & all
+									) == 0 ? (square << 8) : 0) : ((((long)(((ulong)square) >> 8)) & all) == 0 ? ((long
+									)(((ulong)square) >> 8)) : 0));
+							}
+							// Pawn captures the checking piece
+							destinySquares |= (attacksInfo.attacksFromSquare[index] & attacksInfo.piecesGivingCheck
+								);
+							if (destinySquares != 0)
+							{
+								GeneratePawnCapturesOrGoodPromos(index, square, destinySquares, board.GetPassantSquare
+									());
+							}
+							else
+							{
+								if (board.GetPassantSquare() != 0 && (attacksInfo.attacksFromSquare[index] & board
+									.GetPassantSquare()) != 0)
+								{
+									// This pawn can capture to the passant square
+									long testPassantSquare = (turn ? attacksInfo.piecesGivingCheck << 8 : (long)(((ulong
+										)attacksInfo.piecesGivingCheck) >> 8));
+									if (testPassantSquare == board.GetPassantSquare() || (board.GetPassantSquare() & 
+										attacksInfo.interposeCheckSquares) != 0)
+									{
+										// En-passant capture target giving check
+										// En passant capture to interpose
+										AddMove(Move.Pawn, index, square, board.GetPassantSquare(), true, Move.TypePassant
+											);
+									}
+								}
+							}
+						}
+						else
+						{
+							if (((attacksInfo.attacksFromSquare[index] & attacksInfo.piecesGivingCheck)) != 0)
+							{
+								if ((square & board.rooks) != 0)
+								{
+									// Rook
+									GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.piecesGivingCheck, 
+										true);
+								}
+								else
+								{
+									if ((square & board.bishops) != 0)
+									{
+										// Bishop
+										GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.piecesGivingCheck
+											, true);
+									}
+									else
+									{
+										if ((square & board.queens) != 0)
+										{
+											// Queen
+											GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.piecesGivingCheck
+												, true);
+										}
+										else
+										{
+											if ((square & board.knights) != 0)
+											{
+												// Knight
+												GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.piecesGivingCheck
+													, true);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					square <<= 1;
+				}
+			}
+		}
+
+		public virtual void GenerateCheckEvasionsNonCaptures()
+		{
+			// Moving king (without captures)
+			GenerateMovesFromAttacks(Move.King, attacksInfo.myKingIndex, board.kings & mines, 
+				attacksInfo.attacksFromSquare[attacksInfo.myKingIndex] & ~all & ~attacksInfo.attackedSquares
+				[turn ? 1 : 0], false);
+			// Interpose: Cannot interpose with more than one piece giving check
+			if (BitboardUtils.PopCount(attacksInfo.piecesGivingCheck) == 1)
+			{
+				long square = 1;
+				for (int index = 0; index < 64; index++)
+				{
+					if ((square & mines) != 0 && (square & board.kings) == 0)
+					{
+						if ((square & board.pawns) != 0)
+						{
+							long destinySquares;
+							if (turn)
+							{
+								destinySquares = attacksInfo.interposeCheckSquares & ((((square << 8) & all) == 0
+									 ? (square << 8) : 0) | ((square & BitboardUtils.b2_d) != 0 && (((square << 8) |
+									 (square << 16)) & all) == 0 ? (square << 16) : 0));
+							}
+							else
+							{
+								destinySquares = attacksInfo.interposeCheckSquares & (((((long)(((ulong)square) >>
+									 8)) & all) == 0 ? ((long)(((ulong)square) >> 8)) : 0) | ((square & BitboardUtils
+									.b2_u) != 0 && ((((long)(((ulong)square) >> 8)) | ((long)(((ulong)square) >> 16)
+									)) & all) == 0 ? ((long)(((ulong)square) >> 16)) : 0));
+							}
+							if (destinySquares != 0)
+							{
+								GeneratePawnNonCapturesAndBadPromos(index, square, destinySquares);
+							}
+						}
+						else
+						{
+							long destinySquares = attacksInfo.attacksFromSquare[index] & attacksInfo.interposeCheckSquares
+								 & ~all;
+							if (destinySquares != 0)
+							{
+								if ((square & board.rooks) != 0)
+								{
+									// Rook
+									GenerateMovesFromAttacks(Move.Rook, index, square, destinySquares, false);
+								}
+								else
+								{
+									if ((square & board.bishops) != 0)
+									{
+										// Bishop
+										GenerateMovesFromAttacks(Move.Bishop, index, square, destinySquares, false);
+									}
+									else
+									{
+										if ((square & board.queens) != 0)
+										{
+											// Queen
+											GenerateMovesFromAttacks(Move.Queen, index, square, destinySquares, false);
+										}
+										else
+										{
+											if ((square & board.knights) != 0)
+											{
+												// Knight
+												GenerateMovesFromAttacks(Move.Knight, index, square, destinySquares, false);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					square <<= 1;
+				}
+			}
+		}
+
+		/// <summary>Generates moves from an attack mask</summary>
+		private void GenerateMovesFromAttacks(int pieceMoved, int fromIndex, long from, long
+			 attacks, bool capture)
+		{
+			while (attacks != 0)
+			{
+				long to = BitboardUtils.Lsb(attacks);
+				AddMove(pieceMoved, fromIndex, from, to, capture, 0);
+				attacks ^= to;
+			}
+		}
+
+		private void GeneratePawnCapturesOrGoodPromos(int fromIndex, long from, long attacks
+			, long passant)
+		{
+			while (attacks != 0)
+			{
+				long to = BitboardUtils.Lsb(attacks);
+				if ((to & passant) != 0)
+				{
+					AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePassant);
+				}
+				else
+				{
+					bool capture = (to & others) != 0;
+					if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
+					{
+						AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionQueen);
+						// If it is a capture, we must add the underpromotions
+						if (capture)
+						{
+							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionKnight);
+							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionRook);
+							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionBishop);
+						}
+					}
+					else
+					{
+						if (capture)
+						{
+							AddMove(Move.Pawn, fromIndex, from, to, capture, 0);
+						}
+					}
+				}
+				attacks ^= to;
+			}
+		}
+
+		private void GeneratePawnNonCapturesAndBadPromos(int fromIndex, long from, long attacks
+			)
+		{
+			while (attacks != 0)
+			{
+				long to = BitboardUtils.Lsb(attacks);
+				if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
+				{
+					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionKnight);
+					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionRook);
+					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionBishop);
+				}
+				else
+				{
+					AddMove(Move.Pawn, fromIndex, from, to, false, 0);
+				}
+				attacks ^= to;
+			}
+		}
+
+		private void AddMove(int pieceMoved, int fromIndex, long from, long to, bool capture
+			, int moveType)
+		{
+			int toIndex = BitboardUtils.Square2Index(to);
+			//
+			// Verify check and legality
+			//
+			bool check = false;
+			long bishopSlidersAftermove = (board.bishops | board.queens) & ~from & ~to;
+			long rookSlidersAftermove = (board.rooks | board.queens) & ~from & ~to;
+			long allAfterMove = (all | to) & ~from;
+			long minesAfterMove = (mines | to) & ~from;
+			// Direct checks
+			if (pieceMoved == Move.Knight || moveType == Move.TypePromotionKnight)
+			{
+				check = (to & bbAttacks.knight[attacksInfo.otherKingIndex]) != 0;
+			}
+			else
+			{
+				if (pieceMoved == Move.Bishop || moveType == Move.TypePromotionBishop)
+				{
+					check = (to & attacksInfo.bishopAttacksOtherking) != 0;
+					bishopSlidersAftermove |= to;
+				}
+				else
+				{
+					if (pieceMoved == Move.Rook || moveType == Move.TypePromotionRook)
+					{
+						check = (to & attacksInfo.rookAttacksOtherking) != 0;
+						rookSlidersAftermove |= to;
+					}
+					else
+					{
+						if (pieceMoved == Move.Queen || moveType == Move.TypePromotionQueen)
+						{
+							check = (to & (attacksInfo.bishopAttacksOtherking | attacksInfo.rookAttacksOtherking
+								)) != 0;
+							bishopSlidersAftermove |= to;
+							rookSlidersAftermove |= to;
+						}
+						else
+						{
+							if (pieceMoved == Move.Pawn)
+							{
+								check = (to & (turn ? bbAttacks.pawnDownwards[attacksInfo.otherKingIndex] : bbAttacks
+									.pawnUpwards[attacksInfo.otherKingIndex])) != 0;
+							}
+						}
+					}
+				}
+			}
+			long squaresForDiscovery = from;
+			switch (moveType)
+			{
+				case Move.TypePassant:
+				{
+					squaresForDiscovery |= (turn ? (long)(((ulong)to) >> 8) : to << 8);
+					allAfterMove &= ~squaresForDiscovery;
+					break;
+				}
+
+				case Move.TypeKingsideCastling:
+				{
+					long rookMoveMaskKingSide = (turn ? unchecked((long)(0x05L)) : unchecked((long)(0x0500000000000000L
+						)));
+					squaresForDiscovery |= rookMoveMaskKingSide;
+					allAfterMove ^= rookMoveMaskKingSide;
+					minesAfterMove ^= rookMoveMaskKingSide;
+					rookSlidersAftermove ^= rookMoveMaskKingSide;
+					break;
+				}
+
+				case Move.TypeQueensideCastling:
+				{
+					long rookMoveMaskQueenSide = (turn ? unchecked((long)(0x90L)) : unchecked((long)(
+						0x9000000000000000L)));
+					squaresForDiscovery |= rookMoveMaskQueenSide;
+					allAfterMove ^= rookMoveMaskQueenSide;
+					minesAfterMove ^= rookMoveMaskQueenSide;
+					rookSlidersAftermove ^= rookMoveMaskQueenSide;
 					break;
 				}
 			}
-			return 0;
-		}
-
-		public virtual int GetLastMoveSee()
-		{
-			return lastMoveSee;
+			int newMyKingIndex = attacksInfo.myKingIndex;
+			if (pieceMoved == Move.King)
+			{
+				newMyKingIndex = toIndex;
+			}
+			// Candidates to leave the king in check after moving
+			if (((squaresForDiscovery & attacksInfo.bishopAttacksMyking) != 0) || ((attacksInfo
+				.piecesGivingCheck & (board.bishops | board.queens)) != 0 && pieceMoved == Move.
+				King))
+			{
+				// Moving the king when the king is in check by a slider
+				// Regenerate bishop attacks to my king
+				long newBishopAttacks = bbAttacks.GetBishopAttacks(newMyKingIndex, allAfterMove);
+				if ((newBishopAttacks & bishopSlidersAftermove & ~minesAfterMove) != 0)
+				{
+					return;
+				}
+			}
+			// Illegal move
+			if (((squaresForDiscovery & attacksInfo.rookAttacksMyking) != 0) || ((attacksInfo
+				.piecesGivingCheck & (board.rooks | board.queens)) != 0 && pieceMoved == Move.King
+				))
+			{
+				// Regenerate rook attacks to my king
+				long newRookAttacks = bbAttacks.GetRookAttacks(newMyKingIndex, allAfterMove);
+				if ((newRookAttacks & rookSlidersAftermove & ~minesAfterMove) != 0)
+				{
+					return;
+				}
+			}
+			// Illegal move
+			// Discovered checks
+			if (!check && ((squaresForDiscovery & attacksInfo.bishopAttacksOtherking) != 0))
+			{
+				// Regenerate bishop attacks to the other king
+				long newBishopAttacks = bbAttacks.GetBishopAttacks(attacksInfo.otherKingIndex, allAfterMove
+					);
+				if ((newBishopAttacks & bishopSlidersAftermove & minesAfterMove) != 0)
+				{
+					check = true;
+				}
+			}
+			if (!check && ((squaresForDiscovery & attacksInfo.rookAttacksOtherking) != 0))
+			{
+				// Regenerate rook attacks to the other king
+				long newRookAttacks = bbAttacks.GetRookAttacks(attacksInfo.otherKingIndex, allAfterMove
+					);
+				if ((newRookAttacks & rookSlidersAftermove & minesAfterMove) != 0)
+				{
+					check = true;
+				}
+			}
+			// Generating checks, if the move is not a check, skip it
+			if ((movesToGenerate == GenerateCapturesPromosChecks) && !checkEvasion && !check 
+				&& !capture && (moveType != Move.TypePromotionQueen))
+			{
+				return;
+			}
+			// Now, with legality verified and the check flag, generate the move
+			int move = Move.GenMove(fromIndex, toIndex, pieceMoved, capture, check, moveType);
+			if (move == ttMove)
+			{
+				return;
+			}
+			if (!capture)
+			{
+				if (move == killer1)
+				{
+					foundKiller1 = true;
+					return;
+				}
+				else
+				{
+					if (move == killer2)
+					{
+						foundKiller2 = true;
+						return;
+					}
+					else
+					{
+						if (move == killer3)
+						{
+							foundKiller3 = true;
+							return;
+						}
+						else
+						{
+							if (move == killer4)
+							{
+								foundKiller4 = true;
+								return;
+							}
+						}
+					}
+				}
+			}
+			int see = 0;
+			int pieceCaptured = capture ? Move.GetPieceCaptured(board, move) : 0;
+			if (capture || check)
+			{
+				see = board.See(fromIndex, toIndex, pieceMoved, pieceCaptured);
+				if ((movesToGenerate != GenerateAll) && !checkEvasion && (see < 0))
+				{
+					return;
+				}
+			}
+			if (capture && (see < 0))
+			{
+				badCaptures[badCaptureIndex] = move;
+				badCapturesSee[badCaptureIndex] = see;
+				badCapturesScores[badCaptureIndex] = see;
+				badCaptureIndex++;
+				return;
+			}
+			bool underPromotion = moveType == Move.TypePromotionKnight || moveType == Move.TypePromotionRook
+				 || moveType == Move.TypePromotionBishop;
+			if ((capture || (moveType == Move.TypePromotionQueen)) & !underPromotion)
+			{
+				// Order GOOD captures by MVV/LVA (Hyatt dixit)
+				int score = 0;
+				if (capture)
+				{
+					score = VictimPieceValues[pieceCaptured] - AggressorPieceValues[pieceMoved];
+				}
+				if (moveType == Move.TypePromotionQueen)
+				{
+					score += ScorePromotionQueen;
+				}
+				if (see > 0 || (moveType == Move.TypePromotionQueen))
+				{
+					goodCaptures[goodCaptureIndex] = move;
+					goodCapturesSee[goodCaptureIndex] = see;
+					goodCapturesScores[goodCaptureIndex] = score;
+					goodCaptureIndex++;
+				}
+				else
+				{
+					equalCaptures[equalCaptureIndex] = move;
+					equalCapturesSee[equalCaptureIndex] = see;
+					equalCapturesScores[equalCaptureIndex] = score;
+					equalCaptureIndex++;
+				}
+			}
+			else
+			{
+				nonCaptures[nonCaptureIndex] = move;
+				nonCapturesSee[nonCaptureIndex] = see;
+				nonCapturesScores[nonCaptureIndex] = underPromotion ? ScoreUnderpromotion : sortInfo
+					.GetMoveScore(move);
+				nonCaptureIndex++;
+			}
 		}
 	}
 }

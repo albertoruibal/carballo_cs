@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using Com.Alonsoruibal.Chess.Bitboard;
 using Com.Alonsoruibal.Chess.Hash;
-using Com.Alonsoruibal.Chess.Log;
 using Com.Alonsoruibal.Chess.Movegen;
 using Sharpen;
 
@@ -16,8 +15,6 @@ namespace Com.Alonsoruibal.Chess
 	/// <author>Alberto Alonso Ruibal</author>
 	public class Board
 	{
-		private static readonly Logger logger = Logger.GetLogger("Board");
-
 		public const int MaxMoves = 1024;
 
 		public const string FenStartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -86,8 +83,6 @@ namespace Com.Alonsoruibal.Chess
 
 		public int[] fiftyMovesRuleHistory;
 
-		public char[] capturedPieces;
-
 		public int[] seeGain;
 
 		private const long FlagTurn = unchecked((long)(0x0001L));
@@ -104,7 +99,7 @@ namespace Com.Alonsoruibal.Chess
 
 		private const long FlagsPassant = unchecked((long)(0x0000ff0000ff0000L));
 
-		private static readonly int[] SeePieceValues = new int[] { 0, 100, 325, 330, 500, 
+		public static readonly int[] SeePieceValues = new int[] { 0, 100, 325, 330, 500, 
 			900, 9999 };
 
 		internal BitboardAttacks bbAttacks;
@@ -115,9 +110,9 @@ namespace Com.Alonsoruibal.Chess
 			// Bitboard arrays
 			// History array indexed by moveNumber
 			// to detect draw by treefold
-			// Flags: must be changed only when Moving!!!
+			// Flags: must be changed only when moving
 			// Position on boarch in which is captured
-			// Thos the SEE SWAP algorithm
+			// For the SEE SWAP algorithm
 			whitesHistory = new long[MaxMoves];
 			blacksHistory = new long[MaxMoves];
 			pawnsHistory = new long[MaxMoves];
@@ -293,14 +288,13 @@ namespace Com.Alonsoruibal.Chess
 				], new long[2], new long[2], new long[2], new long[2], new long[2], new long[2], 
 				new long[2] };
 			fiftyMovesRuleHistory = new int[MaxMoves];
-			capturedPieces = new char[MaxMoves];
 			seeGain = new int[32];
 			moveHistory = new int[MaxMoves];
 			sanMoves = new Dictionary<int, string>();
 			bbAttacks = BitboardAttacks.GetInstance();
 		}
 
-		/// <summary>Also computes zobrish key</summary>
+		/// <summary>It also computes the zobrish key</summary>
 		public virtual void StartPosition()
 		{
 			SetFen(FenStartPosition);
@@ -316,8 +310,7 @@ namespace Com.Alonsoruibal.Chess
 			return key[0] ^ key[1] ^ ZobristKey.exclusionKey;
 		}
 
-		/// <summary>An alternative key to avoid collisions on tt</summary>
-		/// <returns/>
+		/// <summary>An alternative key to avoid collisions in the TT</summary>
 		public virtual long GetKey2()
 		{
 			return key[0] ^ ~key[1];
@@ -688,7 +681,7 @@ namespace Com.Alonsoruibal.Chess
 				Verify();
 				// Finally set zobrish key and check flags
 				key = ZobristKey.GetKey(this);
-				SetCheckFlags(GetTurn());
+				SetCheckFlags();
 				// and save history
 				ResetHistory();
 				SaveHistory(0, false);
@@ -748,8 +741,7 @@ namespace Com.Alonsoruibal.Chess
 			}
 			sb.Append("a b c d e f g h  ");
 			sb.Append((GetTurn() ? "white move\n" : "blacks move\n"));
-			// sb.append(" "
-			// +getWhiteKingsideCastling()+getWhiteQueensideCastling()+getBlackKingsideCastling()+getBlackQueensideCastling());
+			// sb.append(" " +getWhiteKingsideCastling()+getWhiteQueensideCastling()+getBlackKingsideCastling()+getBlackQueensideCastling());
 			return sb.ToString();
 		}
 
@@ -770,15 +762,12 @@ namespace Com.Alonsoruibal.Chess
 				Arrays.Fill(keyHistory[i], 0);
 			}
 			Arrays.Fill(fiftyMovesRuleHistory, 0);
-			Arrays.Fill(capturedPieces, '.');
 			Arrays.Fill(moveHistory, 0);
 			sanMoves.Clear();
 		}
 
 		private void SaveHistory(int move, bool fillInfo)
 		{
-			// logger.debug("saving History " + moveNumber + " " +
-			// Move.toStringExt(move) + " fillinfo=" + fillInfo);
 			if (fillInfo)
 			{
 				sanMoves[moveNumber] = Move.ToSan(this, move);
@@ -807,77 +796,16 @@ namespace Com.Alonsoruibal.Chess
 			return moveHistory[moveNumber - 1];
 		}
 
-		/// <summary>
-		/// Recapture for extensions: only if the value of the captured piece is similar
-		/// and the recapture is in the same square
-		/// </summary>
-		public virtual bool GetLastMoveIsRecapture()
-		{
-			if (moveNumber > 1)
-			{
-				int move1 = moveHistory[moveNumber - 1];
-				int move2 = moveHistory[moveNumber - 2];
-				if (!Move.IsCapture(move1) || !Move.IsCapture(move2) || Move.GetToIndex(move1) !=
-					 Move.GetToIndex(move2))
-				{
-					//
-					return false;
-				}
-				char captured1 = capturedPieces[moveNumber - 1];
-				char captured2 = capturedPieces[moveNumber - 2];
-				if (captured1 == '.' || captured2 == '.')
-				{
-					return false;
-				}
-				char capturedLC1 = System.Char.ToLower(captured1);
-				char capturedLC2 = System.Char.ToLower(captured2);
-				// Converts knights in bishops
-				if (capturedLC1 == 'n')
-				{
-					capturedLC1 = 'b';
-				}
-				if (capturedLC2 == 'n')
-				{
-					capturedLC2 = 'b';
-				}
-				if (capturedLC1 == capturedLC2)
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		public virtual char GetLastCapturedPiece()
-		{
-			if (moveNumber > 1)
-			{
-				return System.Char.ToLower(capturedPieces[moveNumber - 1]);
-			}
-			return '.';
-		}
-
-		public virtual char GetCapturedPiece(int plyBefore)
-		{
-			if (moveNumber > plyBefore)
-			{
-				return System.Char.ToLower(capturedPieces[moveNumber - plyBefore]);
-			}
-			return '.';
-		}
-
 		public virtual bool DoMove(int move)
 		{
-			return DoMove(move, true);
+			return DoMove(move, true, true);
 		}
 
 		/// <summary>
 		/// Moves and also updates the board's zobrish key verify legality, if not
 		/// legal undo move and return false 0 is the null move
 		/// </summary>
-		/// <param name="move"/>
-		/// <returns/>
-		public virtual bool DoMove(int move, bool fillInfo)
+		public virtual bool DoMove(int move, bool verify, bool fillInfo)
 		{
 			// logger.debug("Before move: \n" + toString() + "\n " +
 			// Move.toStringExt(move));
@@ -887,17 +815,17 @@ namespace Com.Alonsoruibal.Chess
 			}
 			// Save history
 			SaveHistory(move, fillInfo);
-			long from = Move.GetFromSquare(move);
-			long to = Move.GetToSquare(move);
 			int fromIndex = Move.GetFromIndex(move);
 			int toIndex = Move.GetToIndex(move);
+			long from = Move.GetFromSquare(move);
+			long to = Move.GetToSquare(move);
+			long moveMask = from | to;
+			// Move is as easy as xor with this mask (exceptions are promotions, captures and en-passant captures)
 			int moveType = Move.GetMoveType(move);
 			int pieceMoved = Move.GetPieceMoved(move);
-			bool capture = Move.GetCapture(move);
+			bool capture = Move.IsCapture(move);
 			bool turn = GetTurn();
 			int color = (turn ? 0 : 1);
-			char capturedPiece = GetPieceAt(to);
-			capturedPieces[moveNumber] = capturedPiece;
 			// Count consecutive moves without capture or without pawn move
 			fiftyMovesRule++;
 			moveNumber++;
@@ -912,30 +840,13 @@ namespace Com.Alonsoruibal.Chess
 			flags &= ~FlagsPassant;
 			if (move != 0)
 			{
-				if ((from & GetMines()) == 0)
-				{
-					logger.Error("Origin square not valid");
-					logger.Debug("\n" + ToString());
-					logger.Debug("Move = " + Move.ToStringExt(move));
-					Move.PrintMoves(moveHistory, 0, moveNumber);
-					try
-					{
-						throw new Exception();
-					}
-					catch (Exception e)
-					{
-						Sharpen.Runtime.PrintStackTrace(e);
-					}
-					return false;
-				}
-				long moveMask = from | to;
-				// Move is as easy as xor with this mask
-				// (exceptions are in captures, promotions and passant captures)
+				System.Diagnostics.Debug.Assert((from & GetMines()) != 0, "Origin square not valid"
+					);
 				// Is it is a capture, remove pieces in destination square
 				if (capture)
 				{
 					fiftyMovesRule = 0;
-					// Passant Pawn captures remove captured pawn, put the pawn in to
+					// En-passant pawn captures remove captured pawn, put the pawn in to
 					int toIndexCapture = toIndex;
 					if (moveType == Move.TypePassant)
 					{
@@ -1058,12 +969,13 @@ namespace Com.Alonsoruibal.Chess
 					case Move.King:
 					{
 						// if castling, moves rooks too
-						long rookMask = 0;
+						long rookMoveMask = 0;
 						switch (moveType)
 						{
 							case Move.TypeKingsideCastling:
 							{
-								rookMask = (GetTurn() ? unchecked((long)(0x05L)) : unchecked((long)(0x0500000000000000L
+								// for the castling
+								rookMoveMask = (GetTurn() ? unchecked((long)(0x05L)) : unchecked((long)(0x0500000000000000L
 									)));
 								key[color] ^= ZobristKey.rook[color][toIndex - 1] ^ ZobristKey.rook[color][toIndex
 									 + 1];
@@ -1072,24 +984,24 @@ namespace Com.Alonsoruibal.Chess
 
 							case Move.TypeQueensideCastling:
 							{
-								rookMask = (GetTurn() ? unchecked((long)(0x90L)) : unchecked((long)(0x9000000000000000L
+								rookMoveMask = (GetTurn() ? unchecked((long)(0x90L)) : unchecked((long)(0x9000000000000000L
 									)));
 								key[color] ^= ZobristKey.rook[color][toIndex - 1] ^ ZobristKey.rook[color][toIndex
 									 + 2];
 								break;
 							}
 						}
-						if (rookMask != 0)
+						if (rookMoveMask != 0)
 						{
 							if (GetTurn())
 							{
-								whites ^= rookMask;
+								whites ^= rookMoveMask;
 							}
 							else
 							{
-								blacks ^= rookMask;
+								blacks ^= rookMoveMask;
 							}
-							rooks ^= rookMask;
+							rooks ^= rookMoveMask;
 						}
 						kings ^= moveMask;
 						key[color] ^= ZobristKey.king[color][fromIndex] ^ ZobristKey.king[color][toIndex];
@@ -1134,57 +1046,53 @@ namespace Com.Alonsoruibal.Chess
 			// Change turn
 			flags ^= FlagTurn;
 			key[0] ^= ZobristKey.whiteMove;
-			// // TODO remove
-			// long aux[] = ZobristKey.getKey(this);
-			// if (key[0] != aux[0] || key[1] != aux[1]) {
-			// System.out.println("Zobrist key Error");
-			// logger.debug("\n" + toString());
-			// logger.debug("Move = " + Move.toStringExt(move));
-			// Move.printMoves(moveHistory, 0, moveNumber);
-			// logger.debug("afterc: " + aux[0] + " " + aux[1]);
-			// logger.debug("after:  " + key[0] + " " + key[1]);
-			// System.exit(-1);
-			// key = aux;
-			// }
-			if (IsValid(!turn))
+			if (verify)
 			{
-				SetCheckFlags(!turn);
-				if (fillInfo)
+				if (IsValid())
 				{
-					GenerateLegalMoves();
-					if (IsMate())
+					SetCheckFlags();
+					if (fillInfo)
 					{
-						// Append # when mate
-						sanMoves[moveNumber - 1] = sanMoves[moveNumber - 1] + "#";
-					}
-					else
-					{
-						if (GetCheck())
+						GenerateLegalMoves();
+						if (IsMate())
 						{
-							// Append + when check
-							sanMoves[moveNumber - 1] = sanMoves[moveNumber - 1] + "+";
+							// Append # when mate
+							sanMoves[moveNumber - 1] = sanMoves[moveNumber - 1].Replace("+", "#");
 						}
 					}
 				}
-				return true;
+				else
+				{
+					UndoMove();
+					return false;
+				}
 			}
 			else
 			{
-				UndoMove();
-				return false;
+				// Trust move check flag
+				if (Move.IsCheck(move))
+				{
+					flags |= FlagCheck;
+				}
+				else
+				{
+					flags &= ~FlagCheck;
+				}
 			}
+			return true;
 		}
 
-		/// <summary>It checks if a state is valid basically, not entering own king in check</summary>
-		private bool IsValid(bool turn)
+		/// <summary>It checks if a state is valid basically, if the other king is not in check
+		/// 	</summary>
+		private bool IsValid()
 		{
-			return (!bbAttacks.IsSquareAttacked(this, kings & GetOthers(), !turn));
+			return (!bbAttacks.IsSquareAttacked(this, kings & GetOthers(), !GetTurn()));
 		}
 
-		private void SetCheckFlags(bool turn)
+		/// <summary>Sets check flag if the own king is in check</summary>
+		private void SetCheckFlags()
 		{
-			// Set check flags
-			if (bbAttacks.IsSquareAttacked(this, kings & GetMines(), turn))
+			if (bbAttacks.IsSquareAttacked(this, kings & GetMines(), GetTurn()))
 			{
 				flags |= FlagCheck;
 			}
@@ -1267,8 +1175,6 @@ namespace Com.Alonsoruibal.Chess
 				{
 					repetitions++;
 				}
-				// logger.debug("movenumber="+i+" key0=" + keyHistory[i][0] + " " +
-				// " key1=" + keyHistory[i][1] + " Repetitions="+repetitions);
 				if (repetitions >= 2)
 				{
 					// with the last one they are 3
@@ -1283,54 +1189,21 @@ namespace Com.Alonsoruibal.Chess
 
 		//
 		//
-		/// <summary>The SWAP algorithm</summary>
 		public virtual int See(int move)
 		{
-			int pieceCaptured = 0;
-			long to = Move.GetToSquare(move);
-			if ((to & knights) != 0)
-			{
-				pieceCaptured = Move.Knight;
-			}
-			else
-			{
-				if ((to & bishops) != 0)
-				{
-					pieceCaptured = Move.Bishop;
-				}
-				else
-				{
-					if ((to & rooks) != 0)
-					{
-						pieceCaptured = Move.Rook;
-					}
-					else
-					{
-						if ((to & queens) != 0)
-						{
-							pieceCaptured = Move.Queen;
-						}
-						else
-						{
-							if (Move.IsCapture(move))
-							{
-								pieceCaptured = Move.Pawn;
-							}
-						}
-					}
-				}
-			}
 			return See(Move.GetFromIndex(move), Move.GetToIndex(move), Move.GetPieceMoved(move
-				), pieceCaptured);
+				), Move.GetPieceCaptured(this, move));
 		}
 
+		/// <summary>The SWAP algorithm https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
+		/// 	</summary>
 		public virtual int See(int fromIndex, int toIndex, int pieceMoved, int targetPiece
 			)
 		{
 			int d = 0;
 			long mayXray = pawns | bishops | rooks | queens;
 			// not kings nor knights
-			long fromSquare = 1 << fromIndex;
+			long fromSquare = unchecked((long)(0x1L)) << fromIndex;
 			long all = GetAll();
 			long attacks = bbAttacks.GetIndexAttacks(this, toIndex);
 			long fromCandidates;
@@ -1345,7 +1218,7 @@ namespace Com.Alonsoruibal.Chess
 				attacks ^= fromSquare;
 				// reset bit in set to traverse
 				all ^= fromSquare;
-				// reset bit in temporary occupancy (for x-Rays)
+				// reset bit in temporary occupancy (for X-Rays)
 				if ((fromSquare & mayXray) != 0)
 				{
 					attacks |= bbAttacks.GetXrayAttacks(this, toIndex, all);
@@ -1462,7 +1335,6 @@ namespace Com.Alonsoruibal.Chess
 			}
 		}
 
-		// logger.debug("Generated " + legalMoveCount + " legal moves....");
 		public virtual int GetLegalMoves(int[] moves)
 		{
 			GenerateLegalMoves();

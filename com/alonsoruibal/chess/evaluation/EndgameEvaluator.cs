@@ -45,25 +45,35 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			int blackNoPawnMaterial = blackKnights + blackBishops + blackRooks + blackQueens;
 			int whiteMaterial = whiteNoPawnMaterial + whitePawns;
 			int blackMaterial = blackNoPawnMaterial + blackPawns;
+			// Endgames without pawns
+			if (whitePawns == 0 && blackPawns == 0)
+			{
+				if ((blackMaterial == 0 && whiteMaterial == 2 && whiteKnights == 2) || (whiteMaterial
+					 == 0 && blackMaterial == 2 && blackKnights == 2))
+				{
+					//
+					return Evaluator.Draw;
+				}
+				// KNNk is draw
+				if ((blackMaterial == 0 && whiteMaterial == 2 && whiteKnights == 1 && whiteBishops
+					 == 1) || (whiteMaterial == 0 && blackMaterial == 2 && blackKnights == 1 && blackBishops
+					 == 1))
+				{
+					//
+					return EndgameEvaluator.EndgameKBNK(board, whiteMaterial > blackMaterial);
+				}
+				if (whiteMaterial == 1 && blackMaterial == 1 && whiteRooks == 1 && blackRooks == 
+					1)
+				{
+					return EndgameEvaluator.EndgameKRKR(board);
+				}
+			}
+			// Not always a draw
 			if ((blackMaterial == 0 && whiteNoPawnMaterial == 0 && whitePawns == 1) || (whiteMaterial
 				 == 0 && blackNoPawnMaterial == 0 && blackPawns == 1))
 			{
 				//
 				return EndgameEvaluator.EndgameKPK(board, whiteMaterial > blackMaterial);
-			}
-			if ((blackMaterial == 0 && whiteMaterial == 2 && whiteKnights == 2) || (whiteMaterial
-				 == 0 && blackMaterial == 2 && blackKnights == 2))
-			{
-				//
-				return Evaluator.Draw;
-			}
-			// KNNk is draw
-			if ((blackMaterial == 0 && whiteMaterial == 2 && whiteKnights == 1 && whiteBishops
-				 == 1) || (whiteMaterial == 0 && blackMaterial == 2 && blackKnights == 1 && blackBishops
-				 == 1))
-			{
-				//
-				return EndgameEvaluator.EndgameKBNK(board, whiteMaterial > blackMaterial);
 			}
 			if (blackMaterial == 0 && (whiteBishops >= 2 || whiteRooks > 0 || whiteQueens > 0
 				) || whiteMaterial == 0 && (whiteBishops >= 2 || blackRooks > 0 || blackQueens >
@@ -120,6 +130,35 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 				 ExperimentalEvaluator.Pawn - (7 - BitboardUtils.GetRankOfIndex(BitboardUtils.Square2Index
 				(board.pawns)));
 		}
+
 		//
+		private static int EndgameKRKR(Board board)
+		{
+			int myKingIndex = BitboardUtils.Square2Index(board.kings & board.GetMines());
+			int myRookIndex = BitboardUtils.Square2Index(board.rooks & board.GetMines());
+			int otherKingIndex = BitboardUtils.Square2Index(board.kings & board.GetOthers());
+			int otherRookIndex = BitboardUtils.Square2Index(board.rooks & board.GetOthers());
+			// The other king is too far, or my king is near the other rook, so my rook can capture the other rook
+			if ((BitboardUtils.Distance(otherKingIndex, otherRookIndex) > 1 || BitboardUtils.
+				Distance(myKingIndex, otherRookIndex) == 1) && (BitboardAttacks.GetInstance().GetRookAttacks
+				(myRookIndex, board.GetAll()) & board.rooks) != 0)
+			{
+				return Evaluator.KnownWin;
+			}
+			// The other rook is undefended and my king can capture it
+			if (BitboardUtils.Distance(otherKingIndex, otherRookIndex) > 1 && BitboardUtils.Distance
+				(myKingIndex, otherRookIndex) == 1)
+			{
+				// Does the other king capture my rook just after my move?
+				if (BitboardUtils.Distance(otherKingIndex, myRookIndex) == 1 && BitboardUtils.Distance
+					(otherRookIndex, myRookIndex) > 1)
+				{
+					/*that's my king after after capture*/
+					return Evaluator.Draw;
+				}
+				return Evaluator.KnownWin;
+			}
+			return Evaluator.Draw;
+		}
 	}
 }

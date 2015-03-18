@@ -6,9 +6,9 @@ namespace Com.Alonsoruibal.Chess
 	/// <author>rui</author>
 	public class Config
 	{
-		public bool experimental = false;
-
 		public const bool DefaultUseBook = true;
+
+		public const bool DefaultPonder = true;
 
 		public const int DefaultBookKnowgledge = 100;
 
@@ -34,8 +34,6 @@ namespace Com.Alonsoruibal.Chess
 
 		public const int DefaultExtensionsPassedPawn = 0;
 
-		public const int DefaultExtensionsRecapture = 0;
-
 		public const int DefaultExtensionsSingular = 2;
 
 		public const int DefaultSingularExtensionMargin = 50;
@@ -48,17 +46,15 @@ namespace Com.Alonsoruibal.Chess
 
 		public const bool DefaultFutility = true;
 
+		public const int DefaultFutilityMarginQs = 80;
+
 		public const int DefaultFutilityMargin = 100;
 
-		public const bool DefaultAggresiveFutility = true;
-
-		public const int DefaultAggresiveFutilityMargin = 200;
-
-		public const int DefaultFutilityMarginQs = 150;
+		public const int DefaultFutilityMarginAggressive = 200;
 
 		public const bool DefaultRazoring = true;
 
-		public const int DefaultRazoringMargin = 900;
+		public const int DefaultRazoringMargin = 400;
 
 		public const int DefaultContemptFactor = 90;
 
@@ -77,6 +73,8 @@ namespace Com.Alonsoruibal.Chess
 		public const int DefaultEvalKingSafety = 100;
 
 		public const int DefaultRand = 0;
+
+		private bool ponder = DefaultPonder;
 
 		private bool useBook = DefaultUseBook;
 
@@ -106,8 +104,6 @@ namespace Com.Alonsoruibal.Chess
 
 		private int extensionsPassedPawn = DefaultExtensionsPassedPawn;
 
-		private int extensionsRecapture = DefaultExtensionsRecapture;
-
 		private int extensionsSingular = DefaultExtensionsSingular;
 
 		private int singularExtensionMargin = DefaultSingularExtensionMargin;
@@ -120,13 +116,11 @@ namespace Com.Alonsoruibal.Chess
 
 		private bool futility = DefaultFutility;
 
+		private int futilityMarginQS = DefaultFutilityMarginQs;
+
 		private int futilityMargin = DefaultFutilityMargin;
 
-		private bool aggressiveFutility = DefaultAggresiveFutility;
-
-		private int aggressiveFutilityMargin = DefaultAggresiveFutilityMargin;
-
-		private int futilityMarginQS = DefaultFutilityMarginQs;
+		private int futilityMarginAggressive = DefaultFutilityMarginAggressive;
 
 		private bool razoring = DefaultRazoring;
 
@@ -152,12 +146,21 @@ namespace Com.Alonsoruibal.Chess
 
 		public Config()
 		{
-			// For manual testing
 			// Default values are static fields used also from UCIEngine
 			// 2 = 1 PLY
 			// >0 refuses draw <0 looks for draw
 			// It is initialized in the constructor
 			SetAspirationWindowSizes(DefaultAspirationWindowSizes);
+		}
+
+		public virtual bool GetPonder()
+		{
+			return ponder;
+		}
+
+		public virtual void SetPonder(bool ponder)
+		{
+			this.ponder = ponder;
 		}
 
 		public virtual bool GetUseBook()
@@ -235,7 +238,7 @@ namespace Com.Alonsoruibal.Chess
 			return iid;
 		}
 
-		public virtual void GetIid(bool iid)
+		public virtual void SetIid(bool iid)
 		{
 			this.iid = iid;
 		}
@@ -270,6 +273,16 @@ namespace Com.Alonsoruibal.Chess
 			this.futility = futility;
 		}
 
+		public virtual int GetFutilityMarginQS()
+		{
+			return futilityMarginQS;
+		}
+
+		public virtual void SetFutilityMarginQS(int futilityMarginQS)
+		{
+			this.futilityMarginQS = futilityMarginQS;
+		}
+
 		public virtual int GetFutilityMargin()
 		{
 			return futilityMargin;
@@ -280,34 +293,14 @@ namespace Com.Alonsoruibal.Chess
 			this.futilityMargin = futilityMargin;
 		}
 
-		public virtual bool GetAggressiveFutility()
+		public virtual int GetFutilityMarginAggressive()
 		{
-			return aggressiveFutility;
+			return futilityMarginAggressive;
 		}
 
-		public virtual void SetAggressiveFutility(bool aggressiveFutility)
+		public virtual void SetFutilityMarginAggressive(int futilityMarginAggressive)
 		{
-			this.aggressiveFutility = aggressiveFutility;
-		}
-
-		public virtual int GetAggressiveFutilityMargin()
-		{
-			return aggressiveFutilityMargin;
-		}
-
-		public virtual void SetAggressiveFutilityMargin(int aggressiveFutilityMargin)
-		{
-			this.aggressiveFutilityMargin = aggressiveFutilityMargin;
-		}
-
-		public virtual int GetFutilityMarginQS()
-		{
-			return futilityMarginQS;
-		}
-
-		public virtual void SetFutilityMarginQS(int futilityMarginQS)
-		{
-			this.futilityMarginQS = futilityMarginQS;
+			this.futilityMarginAggressive = futilityMarginAggressive;
 		}
 
 		public virtual bool GetAspirationWindow()
@@ -383,16 +376,6 @@ namespace Com.Alonsoruibal.Chess
 		public virtual void SetExtensionsPassedPawn(int extensionsPassedPawn)
 		{
 			this.extensionsPassedPawn = extensionsPassedPawn;
-		}
-
-		public virtual int GetExtensionsRecapture()
-		{
-			return extensionsRecapture;
-		}
-
-		public virtual void SetExtensionsRecapture(int extensionsRecapture)
-		{
-			this.extensionsRecapture = extensionsRecapture;
 		}
 
 		public virtual int GetExtensionsSingular()
@@ -548,20 +531,20 @@ namespace Com.Alonsoruibal.Chess
 
 		public override string ToString()
 		{
-			return "Config [aggressiveFutility=" + aggressiveFutility + ", aggressiveFutilityMargin="
-				 + aggressiveFutilityMargin + ", aspirationWindow=" + aspirationWindow + ", aspirationWindowSizes="
-				 + Arrays.ToString(aspirationWindowSizes) + ", book=" + book + ", contemptFactor="
-				 + contemptFactor + ", evalKingSafety=" + evalKingSafety + ", evalMobility=" + evalMobility
-				 + ", evalPassedPawns=" + evalPassedPawns + ", evalPawnStructure=" + evalPawnStructure
-				 + ", evaluator=" + evaluator + ", extensionsCheck=" + extensionsCheck + ", extensionsMateThreat="
-				 + extensionsMateThreat + ", extensionsPawnPush=" + extensionsPawnPush + ", extensionsPassedPawn="
-				 + extensionsPassedPawn + ", extensionsRecapture=" + extensionsRecapture + ", extensionsSingular="
-				 + extensionsSingular + ", singularExtensionMargin=" + singularExtensionMargin +
-				 ", futility=" + futility + ", futilityMargin=" + futilityMargin + ", iid=" + iid
-				 + ", lmr=" + lmr + ", nullMove=" + nullMove + ", nullMoveMargin=" + nullMoveMargin
-				 + ", staticNullMove=" + staticNullMove + ", razoring=" + razoring + ", razoringMargin="
-				 + razoringMargin + ", transpositionTableSize=" + transpositionTableSize + ", useBook="
-				 + useBook + "]";
+			return "------------------ Config ---------------------------------------------------------------------\n"
+				 + "Book              " + useBook + " (" + book + ")\n" + "TT Size           " +
+				 transpositionTableSize + "\n" + "Aspiration Window " + aspirationWindow + " " +
+				 Arrays.ToString(aspirationWindowSizes) + "\n" + "Extensions        Check=" + extensionsCheck
+				 + " MateThreat=" + extensionsMateThreat + " PawnPush=" + extensionsPawnPush + " PassedPawn="
+				 + extensionsPassedPawn + " Singular=" + extensionsSingular + " (" + singularExtensionMargin
+				 + ")\n" + "Razoring          " + razoring + " (" + razoringMargin + ")\n" + "Null Move         "
+				 + nullMove + " (" + nullMoveMargin + ")\n" + "Futility Pruning  " + futility + 
+				" (" + futilityMarginQS + ", " + futilityMargin + ", " + futilityMarginAggressive
+				 + ")\n" + "Static Null Move  " + staticNullMove + "\n" + "IID               " +
+				 iid + " (" + iidMargin + ")\n" + "LMR               " + lmr + "\n" + "Evaluator         "
+				 + evaluator + " KingSafety=" + evalKingSafety + " Mobility=" + evalMobility + " PassedPawns="
+				 + evalPassedPawns + " PawnStructure=" + evalPawnStructure + "\n" + "Contempt Factor   "
+				 + contemptFactor;
 		}
 	}
 }

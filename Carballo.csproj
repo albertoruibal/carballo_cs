@@ -133,6 +133,8 @@
     <Compile Include="com\alonsoruibal\chess\uci\Uci.cs" />
     <Compile Include="Util\BigEndian.cs" />
     <Compile Include="com\alonsoruibal\chess\book\ResourceBook.cs" />
+    <Compile Include="com\alonsoruibal\chess\bitboard\AttacksInfo.cs" />
+    <Compile Include="com\alonsoruibal\chess\util\StringUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.SharpZipLib" />
@@ -144,6 +146,7 @@
   <ItemGroup>
     <Folder Include="com\" />
     <Folder Include="Util\" />
+    <Folder Include="com\alonsoruibal\chess\util\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="sharpen-all-options" />

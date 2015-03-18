@@ -1,4 +1,5 @@
 using Com.Alonsoruibal.Chess;
+using Com.Alonsoruibal.Chess.Bitboard;
 using Sharpen;
 
 namespace Com.Alonsoruibal.Chess.Evaluation
@@ -122,7 +123,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 		//
 		//
 		//
-		public override int Evaluate(Board board)
+		public override int Evaluate(Board board, AttacksInfo attacksInfo)
 		{
 			long all = board.GetAll();
 			int[] materialValue = new int[] { 0, 0 };

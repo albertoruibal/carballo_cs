@@ -80,7 +80,7 @@ namespace Com.Alonsoruibal.Chess.Search
 
 		internal int selDepth;
 
-		internal long time;
+		internal long time = long.MinValue;
 
 		internal long nodes;
 
@@ -330,7 +330,7 @@ namespace Com.Alonsoruibal.Chess.Search
 				sb.Append(" nodes ");
 				sb.Append(nodes);
 			}
-			if (time != 0)
+			if (time != long.MinValue)
 			{
 				sb.Append(" time ");
 				sb.Append(time);

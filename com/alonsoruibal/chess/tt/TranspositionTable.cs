@@ -19,13 +19,17 @@ namespace Com.Alonsoruibal.Chess.TT
 		private static readonly Logger logger = Logger.GetLogger("MultiprobeTranspositionTable"
 			);
 
+		public const int DepthQsChecks = 1;
+
+		public const int DepthQsNoChecks = 0;
+
+		public const int TypeEval = 0;
+
 		public const int TypeExactScore = 1;
 
 		public const int TypeFailLow = 2;
 
 		public const int TypeFailHigh = 3;
-
-		public const int TypeEval = 4;
 
 		private const int MaxProbes = 4;
 
@@ -35,11 +39,11 @@ namespace Com.Alonsoruibal.Chess.TT
 
 		public short[] evals;
 
-		private int index;
-
 		private int size;
 
 		private long info;
+
+		private short eval;
 
 		private byte generation;
 
@@ -58,9 +62,8 @@ namespace Com.Alonsoruibal.Chess.TT
 			evals = new short[size];
 			entriesOccupied = 0;
 			generation = 0;
-			index = -1;
-			logger.Debug("Created Multiprobe transposition table, size = " + size + " slots "
-				 + size * 18.0 / (1024 * 1024) + " MBytes");
+			logger.Debug("Created transposition table, size = " + size + " slots " + size * 18.0
+				 / (1024 * 1024) + " MBytes");
 		}
 
 		public virtual void Clear()
@@ -76,11 +79,12 @@ namespace Com.Alonsoruibal.Chess.TT
 			int startIndex = (int)((long)(((ulong)(exclusion ? board.GetExclusionKey() : board
 				.GetKey())) >> (64 - sizeBits)));
 			// Verifies that it is really this board
-			for (index = startIndex; index < startIndex + MaxProbes && index < size; index++)
+			for (int i = startIndex; i < startIndex + MaxProbes && i < size; i++)
 			{
-				if (keys[index] == board.GetKey2())
+				if (keys[i] == board.GetKey2())
 				{
-					info = infos[index];
+					info = infos[i];
+					eval = evals[i];
 					score = (short)(((long)(((ulong)info) >> 48)) & unchecked((int)(0xffff)));
 					// Fix mate score with the real distance to the initial PLY
 					if (score >= SearchEngine.ValueIsMate)
@@ -127,7 +131,7 @@ namespace Com.Alonsoruibal.Chess.TT
 
 		public virtual int GetEval()
 		{
-			return evals[index];
+			return eval;
 		}
 
 		public virtual void NewGeneration()
@@ -158,9 +162,10 @@ namespace Com.Alonsoruibal.Chess.TT
 				}
 			}
 			System.Diagnostics.Debug.Assert(fixedScore >= -Evaluator.Victory && fixedScore <=
-				 Evaluator.Victory);
+				 Evaluator.Victory, "Fixed TT score is outside limits");
 			System.Diagnostics.Debug.Assert(Math.Abs(eval) < SearchEngine.ValueIsMate || Math
-				.Abs(eval) == Evaluator.Victory);
+				.Abs(eval) == Evaluator.Victory || eval == Evaluator.NoValue, "Storing a eval value in the TT outside limits"
+				);
 			if (score <= lowerBound)
 			{
 				Set(board, TypeFailLow, bestMove, fixedScore, depthAnalyzed, eval, exclusion);
@@ -178,73 +183,69 @@ namespace Com.Alonsoruibal.Chess.TT
 			}
 		}
 
-		/// <summary>In case of collision overwrites the eldest.</summary>
-		/// <remarks>In case of collision overwrites the eldest. It must keep PV nodes</remarks>
 		public virtual void Set(Board board, int nodeType, int bestMove, int score, int depthAnalyzed
 			, int eval, bool exclusion)
 		{
 			long key2 = board.GetKey2();
 			int startIndex = (int)((long)(((ulong)(exclusion ? board.GetExclusionKey() : board
 				.GetKey())) >> (64 - sizeBits)));
-			// Verifies that it is really this board
-			int oldGenerationIndex = -1;
-			// first index of an old generation entry
-			int notPvIndex = -1;
-			// first index of a not PV entry
-			index = -1;
+			int replaceIndex = startIndex;
+			int replaceImportance = int.MaxValue;
+			// A higher value, so the first entry will be the default
 			for (int i = startIndex; i < startIndex + MaxProbes && i < size; i++)
 			{
 				info = infos[i];
-				// Replace an empty TT position or the same position
 				if (keys[i] == 0)
 				{
+					// Replace an empty TT position
 					entriesOccupied++;
-					index = i;
+					replaceIndex = i;
 					break;
 				}
 				else
 				{
 					if (keys[i] == key2)
 					{
-						index = i;
+						// Replace the same position
+						replaceIndex = i;
+						if (bestMove == Move.None)
+						{
+							// Keep previous best move
+							bestMove = GetBestMove();
+						}
 						break;
 					}
 				}
-				if (oldGenerationIndex == -1 && GetGeneration() != generation)
+				// Calculates a value with this TT entry importance
+				int entryImportance = (GetNodeType() == TypeExactScore ? 10 : 0) + 255 - GetGenerationDelta
+					() + GetDepthAnalyzed();
+				// Bonus for the PV entries
+				// The older the generation, the less importance
+				// The more depth, the more importance
+				// We will replace the less important entry
+				if (entryImportance < replaceImportance)
 				{
-					oldGenerationIndex = i;
-				}
-				if (notPvIndex == -1 && GetNodeType() != TypeExactScore)
-				{
-					notPvIndex = i;
-				}
-			}
-			if (index == -1 && notPvIndex != -1)
-			{
-				index = notPvIndex;
-			}
-			else
-			{
-				if (index == -1 && oldGenerationIndex != -1)
-				{
-					index = oldGenerationIndex;
-				}
-				else
-				{
-					if (index == -1)
-					{
-						// TT FULL
-						return;
-					}
+					replaceImportance = entryImportance;
+					replaceIndex = i;
 				}
 			}
-			keys[index] = key2;
+			keys[replaceIndex] = key2;
 			info = (bestMove & unchecked((int)(0x1fffff))) | ((nodeType & unchecked((int)(0xf
 				))) << 21) | (((long)(generation & unchecked((int)(0xff)))) << 32) | (((long)(depthAnalyzed
 				 & unchecked((int)(0xff)))) << 40) | (((long)(score & unchecked((int)(0xffff))))
 				 << 48);
-			infos[index] = info;
-			evals[index] = (short)eval;
+			infos[replaceIndex] = info;
+			evals[replaceIndex] = (short)eval;
+		}
+
+		/// <summary>Returns the difference between the current generation and the entry generation (max 255)
+		/// 	</summary>
+		private int GetGenerationDelta()
+		{
+			byte entryGeneration = unchecked((byte)(((long)(((ulong)info) >> 32)) & unchecked(
+				(int)(0xff))));
+			return (generation >= entryGeneration ? generation - entryGeneration : 256 + generation
+				 - entryGeneration);
 		}
 
 		public virtual int GetHashFull()

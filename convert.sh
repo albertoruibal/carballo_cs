@@ -13,15 +13,17 @@ cp -a ../carballo/jse/src/main/java/com tmp/
 #
 # Avoid more than one main() in the code
 rm ./tmp/com/alonsoruibal/chess/evaluation/KPKBitbaseGenerator.java
+rm ./tmp/com/alonsoruibal/chess/evaluation/ExperimentalPcsqGenerator.java
+rm ./tmp/com/alonsoruibal/chess/evaluation/CompletePcsqGenerator.java
 rm ./tmp/com/alonsoruibal/chess/bitboard/MagicNumbersGenerator.java
 # These classes are converted manually
 rm ./tmp/com/alonsoruibal/chess/book/FileBook.java
 rm ./tmp/com/alonsoruibal/chess/uci/Uci.java
 
 #
-# Call Sharpen
+# Call Sharpen, be careful, it must be run with Java 7
 #
-java -jar sharpencore-0.0.1-SNAPSHOT-jar-with-dependencies.jar ./tmp/ @sharpen-all-options
+$JAVA_HOME/bin/java -jar sharpencore-0.0.1-SNAPSHOT-jar-with-dependencies.jar ./tmp/ @sharpen-all-options
 
 #
 # Move generated code to the root directory and clear tmp

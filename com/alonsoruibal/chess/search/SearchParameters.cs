@@ -1,4 +1,4 @@
-using Com.Alonsoruibal.Chess;
+using System;
 using Com.Alonsoruibal.Chess.Log;
 using Sharpen;
 
@@ -30,6 +30,8 @@ namespace Com.Alonsoruibal.Chess.Search
 		internal bool infinite;
 
 		internal bool ponder;
+
+		internal bool manageTime;
 
 		// UCI parameters
 		// Remaining time
@@ -150,11 +152,23 @@ namespace Com.Alonsoruibal.Chess.Search
 			this.infinite = infinite;
 		}
 
-		/// <summary>TODO elaborate a bit</summary>
-		/// <returns/>
-		public virtual long CalculateMoveTime(Board board, long startTime)
+		/// <summary>Used to detect if it can add more time in case of panic or apply other heuristics to reduce time
+		/// 	</summary>
+		/// <returns>true if the engine is responsible of managing the remaining time</returns>
+		public virtual bool ManageTime()
 		{
-			if (infinite || depth < int.MaxValue || nodes < int.MaxValue)
+			return manageTime;
+		}
+
+		/// <summary>Time management routine</summary>
+		/// <param name="panicTime">is set to true when the score fails low in the root node by 100
+		/// 	</param>
+		/// <returns>the time to think, or Long.MAX_VALUE if it can think an infinite time</returns>
+		public virtual long CalculateMoveTime(bool engineIsWhite, long startTime, bool panicTime
+			)
+		{
+			manageTime = false;
+			if (ponder || infinite || depth < int.MaxValue || nodes < int.MaxValue)
 			{
 				return long.MaxValue;
 			}
@@ -162,23 +176,21 @@ namespace Com.Alonsoruibal.Chess.Search
 			{
 				return startTime + moveTime;
 			}
-			int calctime = 0;
-			if (board.GetTurn())
+			manageTime = true;
+			int calcTime = 0;
+			int timeAvailable = engineIsWhite ? wtime : btime;
+			int timeInc = engineIsWhite ? winc : binc;
+			if (timeAvailable > 0)
 			{
-				if (wtime > 0)
-				{
-					calctime = wtime / 40 + winc;
-				}
+				calcTime = timeAvailable / 40 + ((int)(((uint)timeInc) >> 1));
 			}
-			else
+			if (panicTime)
 			{
-				if (btime > 0)
-				{
-					calctime = btime / 40 + binc;
-				}
+				calcTime = calcTime << 2;
 			}
-			logger.Debug("Thinking for " + calctime + "Ms");
-			return startTime + calctime;
+			calcTime = Math.Min(calcTime, (int)(((uint)timeAvailable) >> 4));
+			logger.Debug("Thinking for " + calcTime + "Ms");
+			return startTime + calcTime;
 		}
 
 		public static SearchParameters Get(int moveTime)

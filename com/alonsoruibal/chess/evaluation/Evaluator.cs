@@ -22,11 +22,20 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 		}
 
 		/// <summary>Board evaluator</summary>
-		public abstract int Evaluate(Board board);
+		public abstract int Evaluate(Board board, AttacksInfo attacksInfo);
 
+		/// <summary>Merges two short Opening - Ending values in one int</summary>
 		public static int Oe(int opening, int endgame)
 		{
-			return (((short)(opening)) << 16) + (short)(endgame);
+			return (opening << 16) | (endgame & unchecked((int)(0xffff)));
+		}
+
+		/// <summary>Multiply with negative numbers (in the factor or in one of the oe components) cannot be done directly
+		/// 	</summary>
+		public static int OeMul(int factor, int oeValue)
+		{
+			return (((oeValue >> 16) * factor) << 16) | ((oeValue & unchecked((int)(0xffff)))
+				 * factor) & unchecked((int)(0xffff));
 		}
 
 		public static int O(int oe)

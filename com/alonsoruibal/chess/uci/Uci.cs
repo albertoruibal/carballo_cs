@@ -9,12 +9,18 @@ using Sharpen;
 
 namespace Com.Alonsoruibal.Chess.Uci
 {
-	/// <summary>UCI Interface TODO ponder</summary>
+	/// <summary>UCI Interface</summary>
 	public class Uci : SearchObserver
 	{
+		internal const string Name = "Carballo Chess Engine v1.2";
+
+		internal const string Author = "Alberto Alonso Ruibal";
+
 		internal Config config;
 
 		internal SearchEngineThreaded engine;
+
+		internal SearchParameters searchParameters;
 
 		internal bool needsReload = true;
 
@@ -27,7 +33,9 @@ namespace Com.Alonsoruibal.Chess.Uci
 		}
 
 		internal virtual void Loop()
-		{			try
+		{
+			System.Console.Out.WriteLine(Name + " by " + Author);
+			try
 			{
 				while (true)
 				{
@@ -37,10 +45,12 @@ namespace Com.Alonsoruibal.Chess.Uci
 					string command = tokens[index++].ToLower();
 					if ("uci".Equals(command))
 					{
-						System.Console.Out.WriteLine("id name Carballo Chess Engine v1.1");
-						System.Console.Out.WriteLine("id author Alberto Alonso Ruibal");
+						System.Console.Out.WriteLine("id name " + Name);
+						System.Console.Out.WriteLine("id author " + Author);
 						System.Console.Out.WriteLine("option name Hash type spin default " + Config.DefaultTranspositionTableSize
 							 + " min 16 max 256");
+						System.Console.Out.WriteLine("option name Ponder type check default " + Config.DefaultPonder
+							);
 						System.Console.Out.WriteLine("option name OwnBook type check default " + Config.DefaultUseBook
 							);
 						System.Console.Out.WriteLine("option name Null Move type check default " + Config
@@ -63,8 +73,6 @@ namespace Com.Alonsoruibal.Chess.Uci
 							 + Config.DefaultExtensionsPassedPawn + " min 0 max 2");
 						System.Console.Out.WriteLine("option name Extensions Mate Threat type spin default "
 							 + Config.DefaultExtensionsMateThreat + " min 0 max 2");
-						System.Console.Out.WriteLine("option name Extensions Recapture type spin default "
-							 + Config.DefaultExtensionsRecapture + " min 0 max 2");
 						System.Console.Out.WriteLine("option name Extensions Singular type spin default "
 							 + Config.DefaultExtensionsSingular + " min 0 max 2");
 						System.Console.Out.WriteLine("option name Singular Extension Margin type spin default "
@@ -77,14 +85,12 @@ namespace Com.Alonsoruibal.Chess.Uci
 							 + Config.DefaultAspirationWindowSizes);
 						System.Console.Out.WriteLine("option name Futility type check default " + Config.
 							DefaultFutility);
+						System.Console.Out.WriteLine("option name Futility Margin QS type spin default " 
+							+ Config.DefaultFutilityMarginQs + " min 1 max 1000");
 						System.Console.Out.WriteLine("option name Futility Margin type spin default " + Config
 							.DefaultFutilityMargin + " min 1 max 1000");
-						System.Console.Out.WriteLine("option name Aggressive Futility type check default "
-							 + Config.DefaultAggresiveFutility);
-						System.Console.Out.WriteLine("option name Aggressive Futility Margin type spin default "
-							 + Config.DefaultAggresiveFutilityMargin + " min 1 max 1000");
-						System.Console.Out.WriteLine("option name Futility Margin QS spin default " + Config
-							.DefaultFutilityMarginQs + " min 1 max 1000");
+						System.Console.Out.WriteLine("option name Futility Margin Aggressive type spin default "
+							 + Config.DefaultFutilityMarginAggressive + " min 1 max 1000");
 						System.Console.Out.WriteLine("option name Razoring type check default " + Config.
 							DefaultRazoring);
 						System.Console.Out.WriteLine("option name Razoring Margin type spin default " + Config
@@ -113,7 +119,8 @@ namespace Com.Alonsoruibal.Chess.Uci
 					{
 						if ("setoption".Equals(command))
 						{
-							index++; // Skip name
+							index++;
+							// Skip name
 							// get the option name without spaces
 							StringBuilder nameSB = new StringBuilder();
 							string tok;
@@ -129,69 +136,69 @@ namespace Com.Alonsoruibal.Chess.Uci
 							}
 							else
 							{
-								if ("OwnBook".Equals(name))
+								if ("Ponder".Equals(name))
 								{
-									config.SetUseBook(System.Boolean.Parse(value));
+									config.SetPonder(System.Boolean.Parse(value));
 								}
 								else
 								{
-									if ("NullMove".Equals(name))
+									if ("OwnBook".Equals(name))
 									{
-										config.SetNullMove(System.Boolean.Parse(value));
+										config.SetUseBook(System.Boolean.Parse(value));
 									}
 									else
 									{
-										if ("NullMoveMargin".Equals(name))
+										if ("NullMove".Equals(name))
 										{
-											config.SetNullMoveMargin(System.Convert.ToInt32(value));
+											config.SetNullMove(System.Boolean.Parse(value));
 										}
 										else
 										{
-											if ("StaticNullMove".Equals(name))
+											if ("NullMoveMargin".Equals(name))
 											{
-												config.SetStaticNullMove(System.Boolean.Parse(value));
+												config.SetNullMoveMargin(System.Convert.ToInt32(value));
 											}
 											else
 											{
-												if ("IID".Equals(name))
+												if ("StaticNullMove".Equals(name))
 												{
-													config.GetIid(System.Boolean.Parse(value));
+													config.SetStaticNullMove(System.Boolean.Parse(value));
 												}
 												else
 												{
-													if ("IIDMargin".Equals(name))
+													if ("IID".Equals(name))
 													{
-														config.SetIidMargin(System.Convert.ToInt32(value));
+														config.SetIid(System.Boolean.Parse(value));
 													}
 													else
 													{
-														if ("ExtensionsCheck".Equals(name))
+														if ("IIDMargin".Equals(name))
 														{
-															config.SetExtensionsCheck(System.Convert.ToInt32(value));
+															config.SetIidMargin(System.Convert.ToInt32(value));
 														}
 														else
 														{
-															if ("ExtensionsPawnPush".Equals(name))
+															if ("ExtensionsCheck".Equals(name))
 															{
-																config.SetExtensionsPawnPush(System.Convert.ToInt32(value));
+																config.SetExtensionsCheck(System.Convert.ToInt32(value));
 															}
 															else
 															{
-																if ("ExtensionsPassedPawn".Equals(name))
+																if ("ExtensionsPawnPush".Equals(name))
 																{
-																	config.SetExtensionsPassedPawn(System.Convert.ToInt32(value));
+																	config.SetExtensionsPawnPush(System.Convert.ToInt32(value));
 																}
 																else
 																{
-																	if ("ExtensionsMateThreat".Equals(name))
+																	if ("ExtensionsPassedPawn".Equals(name))
 																	{
-																		config.SetExtensionsMateThreat(System.Convert.ToInt32(value));
+																		config.SetExtensionsPassedPawn(System.Convert.ToInt32(value));
 																	}
 																	else
 																	{
-																		if ("ExtensionsRecapture".Equals(name))
+																		if ("ExtensionsMateThreat".Equals(name))
 																		{
-																			config.SetExtensionsRecapture(System.Convert.ToInt32(value));
+																			config.SetExtensionsMateThreat(System.Convert.ToInt32(value));
 																		}
 																		else
 																		{
@@ -231,94 +238,87 @@ namespace Com.Alonsoruibal.Chess.Uci
 																								}
 																								else
 																								{
-																									if ("FutilityMargin".Equals(name))
+																									if ("FutilityMarginQS".Equals(name))
 																									{
-																										config.SetFutilityMargin(System.Convert.ToInt32(value));
+																										config.SetFutilityMarginQS(System.Convert.ToInt32(value));
 																									}
 																									else
 																									{
-																										if ("AggressiveFutility".Equals(name))
+																										if ("FutilityMargin".Equals(name))
 																										{
-																											config.SetAggressiveFutility(System.Boolean.Parse(value));
+																											config.SetFutilityMargin(System.Convert.ToInt32(value));
 																										}
 																										else
 																										{
-																											if ("AggressiveFutilityMargin".Equals(name))
+																											if ("FutilityMarginAggressive".Equals(name))
 																											{
-																												config.SetAggressiveFutilityMargin(System.Convert.ToInt32(value));
+																												config.SetFutilityMarginAggressive(System.Convert.ToInt32(value));
 																											}
 																											else
 																											{
-																												if ("FutilityMarginQS".Equals(name))
+																												if ("Razoring".Equals(name))
 																												{
-																													config.SetFutilityMarginQS(System.Convert.ToInt32(value));
+																													config.SetRazoring(System.Boolean.Parse(value));
 																												}
 																												else
 																												{
-																													if ("Razoring".Equals(name))
+																													if ("RazoringMargin".Equals(name))
 																													{
-																														config.SetRazoring(System.Boolean.Parse(value));
+																														config.SetRazoringMargin(System.Convert.ToInt32(value));
 																													}
 																													else
 																													{
-																														if ("RazoringMargin".Equals(name))
+																														if ("ContemptFactor".Equals(name))
 																														{
-																															config.SetRazoringMargin(System.Convert.ToInt32(value));
+																															config.SetContemptFactor(System.Convert.ToInt32(value));
 																														}
 																														else
 																														{
-																															if ("ContemptFactor".Equals(name))
+																															if ("EvalCenter".Equals(name))
 																															{
-																																config.SetContemptFactor(System.Convert.ToInt32(value));
+																																config.SetEvalCenter(System.Convert.ToInt32(value));
 																															}
 																															else
 																															{
-																																if ("EvalCenter".Equals(name))
+																																if ("EvalPositional".Equals(name))
 																																{
-																																	config.SetEvalCenter(System.Convert.ToInt32(value));
+																																	config.SetEvalPositional(System.Convert.ToInt32(value));
 																																}
 																																else
 																																{
-																																	if ("EvalPositional".Equals(name))
+																																	if ("EvalAttacks".Equals(name))
 																																	{
-																																		config.SetEvalPositional(System.Convert.ToInt32(value));
+																																		config.SetEvalAttacks(System.Convert.ToInt32(value));
 																																	}
 																																	else
 																																	{
-																																		if ("EvalAttacks".Equals(name))
+																																		if ("EvalMobility".Equals(name))
 																																		{
-																																			config.SetEvalAttacks(System.Convert.ToInt32(value));
+																																			config.SetEvalMobility(System.Convert.ToInt32(value));
 																																		}
 																																		else
 																																		{
-																																			if ("EvalMobility".Equals(name))
+																																			if ("EvalPawnStructure".Equals(name))
 																																			{
-																																				config.SetEvalMobility(System.Convert.ToInt32(value));
+																																				config.SetEvalPawnStructure(System.Convert.ToInt32(value));
 																																			}
 																																			else
 																																			{
-																																				if ("EvalPawnStructure".Equals(name))
+																																				if ("EvalPassedPawns".Equals(name))
 																																				{
-																																					config.SetEvalPawnStructure(System.Convert.ToInt32(value));
+																																					config.SetEvalPassedPawns(System.Convert.ToInt32(value));
 																																				}
 																																				else
 																																				{
-																																					if ("EvalPassedPawns".Equals(name))
+																																					if ("EvalKingSafety".Equals(name))
 																																					{
-																																						config.SetEvalPassedPawns(System.Convert.ToInt32(value));
+																																						config.SetEvalKingSafety(System.Convert.ToInt32(value));
 																																					}
 																																					else
 																																					{
-																																						if ("EvalKingSafety".Equals(name))
+																																						if ("Rand".Equals(name))
 																																						{
-																																							config.SetEvalKingSafety(System.Convert.ToInt32(value));
-																																						}
-																																						else
-																																						{
-																																							if ("Rand".Equals(name))
-																																							{
-																																								config.SetRand(System.Convert.ToInt32(value));
-																																							}
+																																							config.SetRand(System.Convert.ToInt32(value));
 																																						}
 																																					}
 																																				}
@@ -371,7 +371,7 @@ namespace Com.Alonsoruibal.Chess.Uci
 									{
 										try
 										{
-											Sharpen.Thread.Sleep(100);
+											Sharpen.Thread.Sleep(10);
 										}
 										catch (Exception)
 										{
@@ -390,7 +390,7 @@ namespace Com.Alonsoruibal.Chess.Uci
 								{
 									if ("go".Equals(command))
 									{
-										SearchParameters searchParameters = new SearchParameters();
+										searchParameters = new SearchParameters();
 										while (index < tokens.Length)
 										{
 											string arg1 = tokens[index++];
@@ -546,10 +546,14 @@ namespace Com.Alonsoruibal.Chess.Uci
 													{
 														if ("ponderhit".Equals(command))
 														{
+															if (searchParameters != null)
+															{
+																searchParameters.SetPonder(false);
+																engine.SetSearchLimits(searchParameters, false);
+															}
 														}
 														else
 														{
-															// TODO ponder not supported
 															if ("register".Equals(command))
 															{
 															}
@@ -578,12 +582,13 @@ namespace Com.Alonsoruibal.Chess.Uci
 			StringBuilder sb = new StringBuilder();
 			sb.Append("bestmove ");
 			sb.Append(Move.ToString(bestMove));
-			if (ponder != 0 && ponder != -1)
+			if (config.GetPonder() && ponder != Move.None)
 			{
 				sb.Append(" ponder ");
 				sb.Append(Move.ToString(ponder));
 			}
 			System.Console.Out.WriteLine(sb.ToString());
+			System.Console.Out.Flush();
 		}
 
 		public virtual void Info(SearchStatusInfo info)

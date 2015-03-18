@@ -23,8 +23,15 @@ namespace Com.Alonsoruibal.Chess.Search
 			if (!IsSearching())
 			{
 				SetSearchParameters(searchParameteres);
-				thread = new Sharpen.Thread(this);
-				thread.Start();
+				try
+				{
+					PrepareRun();
+					thread = new Sharpen.Thread(this);
+					thread.Start();
+				}
+				catch (SearchFinishedException)
+				{
+				}
 			}
 		}
 
@@ -36,7 +43,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			{
 				try
 				{
-					Sharpen.Thread.Sleep(100);
+					Sharpen.Thread.Sleep(10);
 				}
 				catch (Exception e)
 				{
