@@ -16,8 +16,6 @@ namespace Com.Alonsoruibal.Chess
 
 		public const bool DefaultNullMove = true;
 
-		public const int DefaultNullMoveMargin = 200;
-
 		public const bool DefaultStaticNullMove = true;
 
 		public const bool DefaultIid = true;
@@ -74,6 +72,8 @@ namespace Com.Alonsoruibal.Chess
 
 		public const int DefaultRand = 0;
 
+		public const bool DefaultUciChess960 = false;
+
 		private bool ponder = DefaultPonder;
 
 		private bool useBook = DefaultUseBook;
@@ -85,8 +85,6 @@ namespace Com.Alonsoruibal.Chess
 		private string evaluator = DefaultEvaluator;
 
 		private bool nullMove = DefaultNullMove;
-
-		private int nullMoveMargin = DefaultNullMoveMargin;
 
 		private bool staticNullMove = DefaultStaticNullMove;
 
@@ -143,6 +141,8 @@ namespace Com.Alonsoruibal.Chess
 		private int evalKingSafety = DefaultEvalKingSafety;
 
 		private int rand = DefaultRand;
+
+		private bool uciChess960 = DefaultUciChess960;
 
 		public Config()
 		{
@@ -211,16 +211,6 @@ namespace Com.Alonsoruibal.Chess
 		public virtual void SetNullMove(bool nullMove)
 		{
 			this.nullMove = nullMove;
-		}
-
-		public virtual int GetNullMoveMargin()
-		{
-			return nullMoveMargin;
-		}
-
-		public virtual void SetNullMoveMargin(int nullMoveMargin)
-		{
-			this.nullMoveMargin = nullMoveMargin;
 		}
 
 		public virtual bool GetStaticNullMove()
@@ -508,6 +498,16 @@ namespace Com.Alonsoruibal.Chess
 			this.razoringMargin = razoringMargin;
 		}
 
+		public virtual bool IsUciChess960()
+		{
+			return uciChess960;
+		}
+
+		public virtual void SetUciChess960(bool uciChess960)
+		{
+			this.uciChess960 = uciChess960;
+		}
+
 		/// <summary>2100 is the max, 500 the min</summary>
 		/// <param name="engineElo"/>
 		public virtual void SetElo(int engineElo)
@@ -538,13 +538,12 @@ namespace Com.Alonsoruibal.Chess
 				 + " MateThreat=" + extensionsMateThreat + " PawnPush=" + extensionsPawnPush + " PassedPawn="
 				 + extensionsPassedPawn + " Singular=" + extensionsSingular + " (" + singularExtensionMargin
 				 + ")\n" + "Razoring          " + razoring + " (" + razoringMargin + ")\n" + "Null Move         "
-				 + nullMove + " (" + nullMoveMargin + ")\n" + "Futility Pruning  " + futility + 
-				" (" + futilityMarginQS + ", " + futilityMargin + ", " + futilityMarginAggressive
-				 + ")\n" + "Static Null Move  " + staticNullMove + "\n" + "IID               " +
-				 iid + " (" + iidMargin + ")\n" + "LMR               " + lmr + "\n" + "Evaluator         "
-				 + evaluator + " KingSafety=" + evalKingSafety + " Mobility=" + evalMobility + " PassedPawns="
-				 + evalPassedPawns + " PawnStructure=" + evalPawnStructure + "\n" + "Contempt Factor   "
-				 + contemptFactor;
+				 + nullMove + "\n" + "Futility Pruning  " + futility + " (" + futilityMarginQS +
+				 ", " + futilityMargin + ", " + futilityMarginAggressive + ")\n" + "Static Null Move  "
+				 + staticNullMove + "\n" + "IID               " + iid + " (" + iidMargin + ")\n"
+				 + "LMR               " + lmr + "\n" + "Evaluator         " + evaluator + " KingSafety="
+				 + evalKingSafety + " Mobility=" + evalMobility + " PassedPawns=" + evalPassedPawns
+				 + " PawnStructure=" + evalPawnStructure + "\n" + "Contempt Factor   " + contemptFactor;
 		}
 	}
 }

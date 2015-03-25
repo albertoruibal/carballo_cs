@@ -110,14 +110,14 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		public static readonly long[][] RankAndBackward = new long[][] { RankAndDownwards
 			, RankAndUpwards };
 
-		public static readonly string[] squareNames = ChangeEndianArray64(new string[] { 
+		public static readonly string[] SquareNames = ChangeEndianArray64(new string[] { 
 			"a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7"
 			, "g7", "h7", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5", "c5", 
 			"d5", "e5", "f5", "g5", "h5", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a3"
 			, "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a2", "b2", "c2", "d2", "e2", "f2", 
 			"g2", "h2", "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1" });
 
-		public static readonly byte[] bitTable = new byte[] { 63, 30, 3, 32, 25, 41, 22, 
+		public static readonly byte[] BitTable = new byte[] { 63, 30, 3, 32, 25, 41, 22, 
 			33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2, 51, 21, 43, 45, 10, 18, 47, 1, 54
 			, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52, 26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 
 			39, 48, 24, 59, 14, 12, 55, 38, 28, 58, 20, 37, 17, 36, 8 };
@@ -224,7 +224,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		{
 			long b = square ^ (square - 1);
 			int fold = (int)(b ^ ((long)(((ulong)b) >> 32)));
-			return bitTable[(int)(((uint)(fold * unchecked((int)(0x783a9b23)))) >> 26)];
+			return BitTable[(int)(((uint)(fold * unchecked((int)(0x783a9b23)))) >> 26)];
 		}
 
 		/// <summary>And viceversa</summary>
@@ -332,19 +332,19 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		/// <returns/>
 		public static string Square2Algebraic(long square)
 		{
-			return squareNames[Square2Index(square)];
+			return SquareNames[Square2Index(square)];
 		}
 
 		public static string Index2Algebraic(int index)
 		{
-			return squareNames[index];
+			return SquareNames[index];
 		}
 
 		public static int Algebraic2Index(string name)
 		{
 			for (int i = 0; i < 64; i++)
 			{
-				if (name.Equals(squareNames[i]))
+				if (name.Equals(SquareNames[i]))
 				{
 					return i;
 				}
@@ -357,7 +357,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			long aux = H1;
 			for (int i = 0; i < 64; i++)
 			{
-				if (name.Equals(squareNames[i]))
+				if (name.Equals(SquareNames[i]))
 				{
 					return aux;
 				}
@@ -415,7 +415,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			return index >> 3;
 		}
 
-		/// <summary>Gets a long with the less significative bit of the board</summary>
+		/// <summary>Gets a long with the less significant bit of the board</summary>
 		public static long Lsb(long board)
 		{
 			return board & (-board);
@@ -423,13 +423,13 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public static long Msb(long board)
 		{
-			board |= board >> 32;
-			board |= board >> 16;
-			board |= board >> 8;
-			board |= board >> 4;
-			board |= board >> 2;
-			board |= board >> 1;
-			return (board >> 1) + 1;
+			board |= (long)(((ulong)board) >> 32);
+			board |= (long)(((ulong)board) >> 16);
+			board |= (long)(((ulong)board) >> 8);
+			board |= (long)(((ulong)board) >> 4);
+			board |= (long)(((ulong)board) >> 2);
+			board |= (long)(((ulong)board) >> 1);
+			return board == 0 ? 0 : ((long)(((ulong)board) >> 1)) + 1;
 		}
 
 		/// <summary>Distance between two indexes</summary>
@@ -437,6 +437,15 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		{
 			return Math.Max(Math.Abs((index1 & 7) - (index2 & 7)), Math.Abs((index1 >> 3) - (
 				index2 >> 3)));
+		}
+
+		/// <summary>
+		/// Gets the horizontal line between two squares (including the origin and destiny squares)
+		/// square1 must be to the left of square2 (square1 must be a higher bit)
+		/// </summary>
+		public static long GetHorizontalLine(long square1, long square2)
+		{
+			return (square1 | (square1 - 1)) & ~(square2 - 1);
 		}
 
 		public static bool IsWhite(long square)

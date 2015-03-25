@@ -490,7 +490,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 							& adjacentColumns & myPawns;
 						long myPawnsAheadAdjacent = ranksForward & adjacentColumns & myPawns;
 						long otherPawnsAheadAdjacent = ranksForward & adjacentColumns & otherPawns;
-						long myPawnAttacks = (isWhite ? pawnAttacks[0] : pawnAttacks[1]);
+						long myPawnAttacks = isWhite ? pawnAttacks[0] : pawnAttacks[1];
 						bool isolated = (myPawns & adjacentColumns) == 0;
 						bool supported = (square & myPawnAttacks) != 0;
 						bool doubled = (myPawns & routeToPromotion) != 0;
@@ -501,11 +501,11 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 							>= BitboardUtils.PopCount(otherPawnsAheadAdjacent)));
 						// Can become passer advancing
 						// Has more friend pawns beside and behind than opposed pawns controlling his route to promotion
-						bool backwards = !isolated && !passed && !candidate && (myPawnsBesideAndBehindAdjacent
-							 == 0) && ((pieceAttacks & otherPawns) == 0) && ((BitboardUtils.RankAndBackward[
-							color][isWhite ? BitboardUtils.GetRankLsb(myPawnsAheadAdjacent) : BitboardUtils.
-							GetRankMsb(myPawnsAheadAdjacent)] & routeToPromotion & (board.pawns | otherPawnAttacks
-							)) != 0);
+						bool backwards = !isolated && !passed && !candidate && myPawnsBesideAndBehindAdjacent
+							 == 0 && (pieceAttacks & otherPawns) == 0 && (BitboardUtils.RankAndBackward[color
+							][isWhite ? BitboardUtils.GetRankLsb(myPawnsAheadAdjacent) : BitboardUtils.GetRankMsb
+							(myPawnsAheadAdjacent)] & routeToPromotion & (board.pawns | otherPawnAttacks)) !=
+							 0;
 						// No backwards if it can capture
 						// Other pawns stopping it from advance, opposing or capturing it before reaching my pawns
 						if (debug)
@@ -553,7 +553,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 						}
 						if (passed)
 						{
-							int relativeRank = (isWhite ? rank : 7 - rank);
+							int relativeRank = isWhite ? rank : 7 - rank;
 							long backColumn = BitboardUtils.Column[column] & BitboardUtils.RanksBackward[color
 								][rank];
 							// If has has root/queen behind consider all the route to promotion attacked or defended

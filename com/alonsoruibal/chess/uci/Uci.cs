@@ -55,8 +55,6 @@ namespace Com.Alonsoruibal.Chess.Uci
 							);
 						System.Console.Out.WriteLine("option name Null Move type check default " + Config
 							.DefaultNullMove);
-						System.Console.Out.WriteLine("option name Null Move Margin type spin default " + 
-							Config.DefaultNullMoveMargin + " min 0 max 1000");
 						System.Console.Out.WriteLine("option name Static Null Move type check default " +
 							 Config.DefaultStaticNullMove);
 						System.Console.Out.WriteLine("option name LMR type check default " + Config.DefaultLmr
@@ -153,173 +151,166 @@ namespace Com.Alonsoruibal.Chess.Uci
 											config.SetNullMove(System.Boolean.Parse(value));
 										}
 										else
-										{
-											if ("NullMoveMargin".Equals(name))
+										{		
+											if ("StaticNullMove".Equals(name))
 											{
-												config.SetNullMoveMargin(System.Convert.ToInt32(value));
+												config.SetStaticNullMove(System.Boolean.Parse(value));
 											}
 											else
 											{
-												if ("StaticNullMove".Equals(name))
+												if ("IID".Equals(name))
 												{
-													config.SetStaticNullMove(System.Boolean.Parse(value));
+													config.SetIid(System.Boolean.Parse(value));
 												}
 												else
 												{
-													if ("IID".Equals(name))
+													if ("IIDMargin".Equals(name))
 													{
-														config.SetIid(System.Boolean.Parse(value));
+														config.SetIidMargin(System.Convert.ToInt32(value));
 													}
 													else
 													{
-														if ("IIDMargin".Equals(name))
+														if ("ExtensionsCheck".Equals(name))
 														{
-															config.SetIidMargin(System.Convert.ToInt32(value));
+															config.SetExtensionsCheck(System.Convert.ToInt32(value));
 														}
 														else
 														{
-															if ("ExtensionsCheck".Equals(name))
+															if ("ExtensionsPawnPush".Equals(name))
 															{
-																config.SetExtensionsCheck(System.Convert.ToInt32(value));
+																config.SetExtensionsPawnPush(System.Convert.ToInt32(value));
 															}
 															else
 															{
-																if ("ExtensionsPawnPush".Equals(name))
+																if ("ExtensionsPassedPawn".Equals(name))
 																{
-																	config.SetExtensionsPawnPush(System.Convert.ToInt32(value));
+																	config.SetExtensionsPassedPawn(System.Convert.ToInt32(value));
 																}
 																else
 																{
-																	if ("ExtensionsPassedPawn".Equals(name))
+																	if ("ExtensionsMateThreat".Equals(name))
 																	{
-																		config.SetExtensionsPassedPawn(System.Convert.ToInt32(value));
+																		config.SetExtensionsMateThreat(System.Convert.ToInt32(value));
 																	}
 																	else
 																	{
-																		if ("ExtensionsMateThreat".Equals(name))
+																		if ("ExtensionsSingular".Equals(name))
 																		{
-																			config.SetExtensionsMateThreat(System.Convert.ToInt32(value));
+																			config.SetExtensionsSingular(System.Convert.ToInt32(value));
 																		}
 																		else
 																		{
-																			if ("ExtensionsSingular".Equals(name))
+																			if ("SingularExtensionMargin".Equals(name))
 																			{
-																				config.SetExtensionsSingular(System.Convert.ToInt32(value));
+																				config.SetSingularExtensionMargin(System.Convert.ToInt32(value));
 																			}
 																			else
 																			{
-																				if ("SingularExtensionMargin".Equals(name))
+																				if ("Evaluator".Equals(name))
 																				{
-																					config.SetSingularExtensionMargin(System.Convert.ToInt32(value));
+																					config.SetEvaluator(value);
 																				}
 																				else
 																				{
-																					if ("Evaluator".Equals(name))
+																					if ("AspirationWindow".Equals(name))
 																					{
-																						config.SetEvaluator(value);
+																						config.SetAspirationWindow(System.Boolean.Parse(value));
 																					}
 																					else
 																					{
-																						if ("AspirationWindow".Equals(name))
+																						if ("AspirationWindowSizes".Equals(name))
 																						{
-																							config.SetAspirationWindow(System.Boolean.Parse(value));
+																							config.SetAspirationWindowSizes(value);
 																						}
 																						else
 																						{
-																							if ("AspirationWindowSizes".Equals(name))
+																							if ("Futility".Equals(name))
 																							{
-																								config.SetAspirationWindowSizes(value);
+																								config.SetFutility(System.Boolean.Parse(value));
 																							}
 																							else
 																							{
-																								if ("Futility".Equals(name))
+																								if ("FutilityMarginQS".Equals(name))
 																								{
-																									config.SetFutility(System.Boolean.Parse(value));
+																									config.SetFutilityMarginQS(System.Convert.ToInt32(value));
 																								}
 																								else
 																								{
-																									if ("FutilityMarginQS".Equals(name))
+																									if ("FutilityMargin".Equals(name))
 																									{
-																										config.SetFutilityMarginQS(System.Convert.ToInt32(value));
+																										config.SetFutilityMargin(System.Convert.ToInt32(value));
 																									}
 																									else
 																									{
-																										if ("FutilityMargin".Equals(name))
+																										if ("FutilityMarginAggressive".Equals(name))
 																										{
-																											config.SetFutilityMargin(System.Convert.ToInt32(value));
+																											config.SetFutilityMarginAggressive(System.Convert.ToInt32(value));
 																										}
 																										else
 																										{
-																											if ("FutilityMarginAggressive".Equals(name))
+																											if ("Razoring".Equals(name))
 																											{
-																												config.SetFutilityMarginAggressive(System.Convert.ToInt32(value));
+																												config.SetRazoring(System.Boolean.Parse(value));
 																											}
 																											else
 																											{
-																												if ("Razoring".Equals(name))
+																												if ("RazoringMargin".Equals(name))
 																												{
-																													config.SetRazoring(System.Boolean.Parse(value));
+																													config.SetRazoringMargin(System.Convert.ToInt32(value));
 																												}
 																												else
 																												{
-																													if ("RazoringMargin".Equals(name))
+																													if ("ContemptFactor".Equals(name))
 																													{
-																														config.SetRazoringMargin(System.Convert.ToInt32(value));
+																														config.SetContemptFactor(System.Convert.ToInt32(value));
 																													}
 																													else
 																													{
-																														if ("ContemptFactor".Equals(name))
+																														if ("EvalCenter".Equals(name))
 																														{
-																															config.SetContemptFactor(System.Convert.ToInt32(value));
+																															config.SetEvalCenter(System.Convert.ToInt32(value));
 																														}
 																														else
 																														{
-																															if ("EvalCenter".Equals(name))
+																															if ("EvalPositional".Equals(name))
 																															{
-																																config.SetEvalCenter(System.Convert.ToInt32(value));
+																																config.SetEvalPositional(System.Convert.ToInt32(value));
 																															}
 																															else
 																															{
-																																if ("EvalPositional".Equals(name))
+																																if ("EvalAttacks".Equals(name))
 																																{
-																																	config.SetEvalPositional(System.Convert.ToInt32(value));
+																																	config.SetEvalAttacks(System.Convert.ToInt32(value));
 																																}
 																																else
 																																{
-																																	if ("EvalAttacks".Equals(name))
+																																	if ("EvalMobility".Equals(name))
 																																	{
-																																		config.SetEvalAttacks(System.Convert.ToInt32(value));
+																																		config.SetEvalMobility(System.Convert.ToInt32(value));
 																																	}
 																																	else
 																																	{
-																																		if ("EvalMobility".Equals(name))
+																																		if ("EvalPawnStructure".Equals(name))
 																																		{
-																																			config.SetEvalMobility(System.Convert.ToInt32(value));
+																																			config.SetEvalPawnStructure(System.Convert.ToInt32(value));
 																																		}
 																																		else
 																																		{
-																																			if ("EvalPawnStructure".Equals(name))
+																																			if ("EvalPassedPawns".Equals(name))
 																																			{
-																																				config.SetEvalPawnStructure(System.Convert.ToInt32(value));
+																																				config.SetEvalPassedPawns(System.Convert.ToInt32(value));
 																																			}
 																																			else
 																																			{
-																																				if ("EvalPassedPawns".Equals(name))
+																																				if ("EvalKingSafety".Equals(name))
 																																				{
-																																					config.SetEvalPassedPawns(System.Convert.ToInt32(value));
+																																					config.SetEvalKingSafety(System.Convert.ToInt32(value));
 																																				}
 																																				else
 																																				{
-																																					if ("EvalKingSafety".Equals(name))
+																																					if ("Rand".Equals(name))
 																																					{
-																																						config.SetEvalKingSafety(System.Convert.ToInt32(value));
-																																					}
-																																					else
-																																					{
-																																						if ("Rand".Equals(name))
-																																						{
-																																							config.SetRand(System.Convert.ToInt32(value));
-																																						}
+																																						config.SetRand(System.Convert.ToInt32(value));
 																																					}
 																																				}
 																																			}

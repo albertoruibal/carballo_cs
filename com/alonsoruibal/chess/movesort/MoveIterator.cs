@@ -53,6 +53,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private const int ScoreLowest = int.MinValue;
 
+		public const int SeeNotCalculated = short.MaxValue;
+
 		private Board board;
 
 		private AttacksInfo attacksInfo;
@@ -60,6 +62,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		private int ttMove;
 
 		private int movesToGenerate;
+
+		private int move;
 
 		private int lastMoveSee;
 
@@ -105,8 +109,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private int[] badCaptures = new int[256];
 
-		private int[] badCapturesSee = new int[256];
-
 		private int[] badCapturesScores = new int[256];
 
 		private int[] equalCaptures = new int[256];
@@ -143,7 +145,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		// Stores non captures and underpromotions
 		public virtual int GetLastMoveSee()
 		{
-			return lastMoveSee;
+			return lastMoveSee != SeeNotCalculated ? lastMoveSee : board.See(move, attacksInfo
+				);
 		}
 
 		public virtual void GenMoves(int ttMove)
@@ -184,7 +187,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		public virtual int Next()
 		{
-			int move;
 			switch (phase)
 			{
 				case PhaseTt:
@@ -194,10 +196,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					{
 						lastMoveSee = Move.IsCapture(ttMove) || Move.IsCheck(ttMove) ? board.See(ttMove) : 
 							0;
-						if (checkEvasion || (movesToGenerate == GenerateAll) || (Move.GetMoveType(ttMove)
-							 == Move.TypePromotionQueen) || ((movesToGenerate == GenerateCapturesPromos) && 
-							Move.IsCapture(ttMove) && (lastMoveSee >= 0)) || ((movesToGenerate == GenerateCapturesPromosChecks
-							) && (Move.IsCapture(ttMove) || Move.IsCheck(ttMove)) && (lastMoveSee >= 0)))
+						if (checkEvasion || movesToGenerate == GenerateAll || Move.GetMoveType(ttMove) ==
+							 Move.TypePromotionQueen || (movesToGenerate == GenerateCapturesPromos && Move.IsCapture
+							(ttMove) && lastMoveSee >= 0) || (movesToGenerate == GenerateCapturesPromosChecks
+							 && (Move.IsCapture(ttMove) || Move.IsCheck(ttMove)) && lastMoveSee >= 0))
 						{
 							//
 							//
@@ -268,10 +270,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 				case PhaseKiller1:
 				{
+					lastMoveSee = SeeNotCalculated;
 					phase++;
 					if (foundKiller1)
 					{
-						lastMoveSee = Move.IsCheck(killer1) ? board.See(killer1) : 0;
 						return killer1;
 					}
 					goto case PhaseKiller2;
@@ -282,7 +284,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller2)
 					{
-						lastMoveSee = Move.IsCheck(killer2) ? board.See(killer2) : 0;
 						return killer2;
 					}
 					goto case PhaseKiller3;
@@ -293,7 +294,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller3)
 					{
-						lastMoveSee = Move.IsCheck(killer3) ? board.See(killer3) : 0;
 						return killer3;
 					}
 					goto case PhaseKiller4;
@@ -304,7 +304,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller4)
 					{
-						lastMoveSee = Move.IsCheck(killer4) ? board.See(killer4) : 0;
 						return killer4;
 					}
 					goto case PhaseNonCaptures;
@@ -324,7 +323,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 				case PhaseBadCaptures:
 				{
-					move = PickMoveFromArray(badCaptureIndex, badCaptures, badCapturesScores, badCapturesSee
+					move = PickMoveFromArray(badCaptureIndex, badCaptures, badCapturesScores, badCapturesScores
 						);
 					if (move != Move.None)
 					{
@@ -356,9 +355,9 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			}
 			if (bestIndex != -1)
 			{
-				arrayScores[bestIndex] = ScoreLowest;
 				int move = arrayMoves[bestIndex];
 				lastMoveSee = arraySee[bestIndex];
+				arrayScores[bestIndex] = ScoreLowest;
 				return move;
 			}
 			else
@@ -533,25 +532,41 @@ namespace Com.Alonsoruibal.Chess.Movesort
 				}
 				square <<= 1;
 			}
-			// Castling: disabled when in check or squares attacked
-			if ((((all & (turn ? unchecked((long)(0x06L)) : unchecked((long)(0x0600000000000000L
-				)))) == 0 && (turn ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling
-				()))) && ((attacksInfo.attackedSquares[turn ? 1 : 0] & (turn ? unchecked((long)(
-				0x0EL)) : unchecked((long)(0x0E00000000000000L)))) == 0))
+			// Castling: disabled when in check or king route attacked
+			if (!board.GetCheck())
 			{
-				//
-				//
-				AddMove(Move.King, attacksInfo.myKingIndex, board.kings & mines, (long)(((ulong)(
-					board.kings & mines)) >> 2), false, Move.TypeKingsideCastling);
-			}
-			if ((((all & (turn ? unchecked((long)(0x70L)) : unchecked((long)(0x7000000000000000L
-				)))) == 0 && (turn ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling
-				()))) && ((attacksInfo.attackedSquares[turn ? 1 : 0] & (turn ? unchecked((long)(
-				0x34L)) : unchecked((long)(0x3400000000000000L)))) == 0))
-			{
-				//
-				AddMove(Move.King, attacksInfo.myKingIndex, board.kings & mines, (board.kings & mines
-					) << 2, false, Move.TypeQueensideCastling);
+				if (turn ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling())
+				{
+					long rookOrigin = board.castlingRooks[turn ? 0 : 2];
+					long rookDestiny = Board.CastlingRookDestinySquare[turn ? 0 : 2];
+					long rookRoute = BitboardUtils.GetHorizontalLine(rookDestiny, rookOrigin) & ~rookOrigin;
+					long kingOrigin = board.kings & mines;
+					long kingDestiny = Board.CastlingKingDestinySquare[turn ? 0 : 2];
+					long kingRoute = BitboardUtils.GetHorizontalLine(kingOrigin, kingDestiny) & ~kingOrigin;
+					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (attacksInfo
+						.attackedSquares[turn ? 1 : 0] & kingRoute) == 0)
+					{
+						//
+						AddMove(Move.King, attacksInfo.myKingIndex, kingOrigin, board.chess960 ? rookOrigin
+							 : kingDestiny, false, Move.TypeKingsideCastling);
+					}
+				}
+				if (turn ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling())
+				{
+					long rookOrigin = board.castlingRooks[turn ? 1 : 3];
+					long rookDestiny = Board.CastlingRookDestinySquare[turn ? 1 : 3];
+					long rookRoute = BitboardUtils.GetHorizontalLine(rookOrigin, rookDestiny) & ~rookOrigin;
+					long kingOrigin = board.kings & mines;
+					long kingDestiny = Board.CastlingKingDestinySquare[turn ? 1 : 3];
+					long kingRoute = BitboardUtils.GetHorizontalLine(kingDestiny, kingOrigin) & ~kingOrigin;
+					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (attacksInfo
+						.attackedSquares[turn ? 1 : 0] & kingRoute) == 0)
+					{
+						//
+						AddMove(Move.King, attacksInfo.myKingIndex, kingOrigin, board.chess960 ? rookOrigin
+							 : kingDestiny, false, Move.TypeQueensideCastling);
+					}
+				}
 			}
 		}
 
@@ -761,16 +776,16 @@ namespace Com.Alonsoruibal.Chess.Movesort
 						// If it is a capture, we must add the underpromotions
 						if (capture)
 						{
-							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionKnight);
-							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionRook);
-							AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionBishop);
+							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionKnight);
+							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionRook);
+							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionBishop);
 						}
 					}
 					else
 					{
 						if (capture)
 						{
-							AddMove(Move.Pawn, fromIndex, from, to, capture, 0);
+							AddMove(Move.Pawn, fromIndex, from, to, true, 0);
 						}
 					}
 				}
@@ -806,136 +821,140 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			// Verify check and legality
 			//
 			bool check = false;
-			long bishopSlidersAftermove = (board.bishops | board.queens) & ~from & ~to;
-			long rookSlidersAftermove = (board.rooks | board.queens) & ~from & ~to;
-			long allAfterMove = (all | to) & ~from;
-			long minesAfterMove = (mines | to) & ~from;
-			// Direct checks
-			if (pieceMoved == Move.Knight || moveType == Move.TypePromotionKnight)
+			int newMyKingIndex;
+			long rookSlidersAfterMove;
+			long allAfterMove;
+			long minesAfterMove;
+			long bishopSlidersAfterMove = (board.bishops | board.queens) & ~from & ~to;
+			long squaresForDiscovery = from;
+			if (moveType == Move.TypeKingsideCastling || moveType == Move.TypeQueensideCastling)
 			{
-				check = (to & bbAttacks.knight[attacksInfo.otherKingIndex]) != 0;
+				// {White Kingside, White Queenside, Black Kingside, Black Queenside}
+				int j = (turn ? 0 : 2) + (moveType == Move.TypeQueensideCastling ? 1 : 0);
+				newMyKingIndex = Board.CastlingKingDestinyIndex[j];
+				// Castling has a special "to" in Chess960 where the destiny square is the rook
+				long kingTo = Board.CastlingKingDestinySquare[j];
+				long rookTo = Board.CastlingRookDestinySquare[j];
+				long rookMoveMask = board.castlingRooks[j] ^ rookTo;
+				rookSlidersAfterMove = (board.rooks ^ rookMoveMask) | board.queens;
+				allAfterMove = ((all ^ rookMoveMask) | kingTo) & ~from;
+				minesAfterMove = ((mines ^ rookMoveMask) | kingTo) & ~from;
+				// Direct check by rook
+				check |= (rookTo & attacksInfo.rookAttacksOtherking) != 0;
 			}
 			else
 			{
-				if (pieceMoved == Move.Bishop || moveType == Move.TypePromotionBishop)
+				if (pieceMoved == Move.King)
 				{
-					check = (to & attacksInfo.bishopAttacksOtherking) != 0;
-					bishopSlidersAftermove |= to;
+					newMyKingIndex = toIndex;
 				}
 				else
 				{
-					if (pieceMoved == Move.Rook || moveType == Move.TypePromotionRook)
+					newMyKingIndex = attacksInfo.myKingIndex;
+				}
+				rookSlidersAfterMove = (board.rooks | board.queens) & ~from & ~to;
+				allAfterMove = (all | to) & ~from;
+				minesAfterMove = (mines | to) & ~from;
+				squaresForDiscovery = from;
+				if (moveType == Move.TypePassant)
+				{
+					squaresForDiscovery |= (turn ? (long)(((ulong)to) >> 8) : to << 8);
+					allAfterMove &= ~squaresForDiscovery;
+				}
+				// Direct checks
+				if (pieceMoved == Move.Knight || moveType == Move.TypePromotionKnight)
+				{
+					check = (to & bbAttacks.knight[attacksInfo.otherKingIndex]) != 0;
+				}
+				else
+				{
+					if (pieceMoved == Move.Bishop || moveType == Move.TypePromotionBishop)
 					{
-						check = (to & attacksInfo.rookAttacksOtherking) != 0;
-						rookSlidersAftermove |= to;
+						check = (to & attacksInfo.bishopAttacksOtherking) != 0;
+						bishopSlidersAfterMove |= to;
 					}
 					else
 					{
-						if (pieceMoved == Move.Queen || moveType == Move.TypePromotionQueen)
+						if (pieceMoved == Move.Rook || moveType == Move.TypePromotionRook)
 						{
-							check = (to & (attacksInfo.bishopAttacksOtherking | attacksInfo.rookAttacksOtherking
-								)) != 0;
-							bishopSlidersAftermove |= to;
-							rookSlidersAftermove |= to;
+							check = (to & attacksInfo.rookAttacksOtherking) != 0;
+							rookSlidersAfterMove |= to;
 						}
 						else
 						{
-							if (pieceMoved == Move.Pawn)
+							if (pieceMoved == Move.Queen || moveType == Move.TypePromotionQueen)
 							{
-								check = (to & (turn ? bbAttacks.pawnDownwards[attacksInfo.otherKingIndex] : bbAttacks
-									.pawnUpwards[attacksInfo.otherKingIndex])) != 0;
+								check = (to & (attacksInfo.bishopAttacksOtherking | attacksInfo.rookAttacksOtherking
+									)) != 0;
+								bishopSlidersAfterMove |= to;
+								rookSlidersAfterMove |= to;
+							}
+							else
+							{
+								if (pieceMoved == Move.Pawn)
+								{
+									check = (to & (turn ? bbAttacks.pawnDownwards[attacksInfo.otherKingIndex] : bbAttacks
+										.pawnUpwards[attacksInfo.otherKingIndex])) != 0;
+								}
 							}
 						}
 					}
 				}
 			}
-			long squaresForDiscovery = from;
-			switch (moveType)
+			// After a promotion to queen or rook there are new sliders transversing the origin square, so mayPin is not valid
+			if ((squaresForDiscovery & attacksInfo.mayPin) != 0 || moveType == Move.TypePromotionQueen
+				 || moveType == Move.TypePromotionRook || moveType == Move.TypePromotionBishop)
 			{
-				case Move.TypePassant:
+				// Candidates to leave the king in check after moving
+				if (((squaresForDiscovery & attacksInfo.bishopAttacksMyking) != 0) || ((attacksInfo
+					.piecesGivingCheck & (board.bishops | board.queens)) != 0 && pieceMoved == Move.
+					King))
 				{
-					squaresForDiscovery |= (turn ? (long)(((ulong)to) >> 8) : to << 8);
-					allAfterMove &= ~squaresForDiscovery;
-					break;
+					// Moving the king when the king is in check by a slider
+					// Regenerate bishop attacks to my king
+					long newBishopAttacks = bbAttacks.GetBishopAttacks(newMyKingIndex, allAfterMove);
+					if ((newBishopAttacks & bishopSlidersAfterMove & ~minesAfterMove) != 0)
+					{
+						return;
+					}
 				}
-
-				case Move.TypeKingsideCastling:
+				// Illegal move
+				if ((squaresForDiscovery & attacksInfo.rookAttacksMyking) != 0 || ((attacksInfo.piecesGivingCheck
+					 & (board.rooks | board.queens)) != 0 && pieceMoved == Move.King))
 				{
-					long rookMoveMaskKingSide = (turn ? unchecked((long)(0x05L)) : unchecked((long)(0x0500000000000000L
-						)));
-					squaresForDiscovery |= rookMoveMaskKingSide;
-					allAfterMove ^= rookMoveMaskKingSide;
-					minesAfterMove ^= rookMoveMaskKingSide;
-					rookSlidersAftermove ^= rookMoveMaskKingSide;
-					break;
+					// Regenerate rook attacks to my king
+					long newRookAttacks = bbAttacks.GetRookAttacks(newMyKingIndex, allAfterMove);
+					if ((newRookAttacks & rookSlidersAfterMove & ~minesAfterMove) != 0)
+					{
+						return;
+					}
 				}
-
-				case Move.TypeQueensideCastling:
+				// Illegal move
+				// Discovered checks
+				if (!check && (squaresForDiscovery & attacksInfo.bishopAttacksOtherking) != 0)
 				{
-					long rookMoveMaskQueenSide = (turn ? unchecked((long)(0x90L)) : unchecked((long)(
-						0x9000000000000000L)));
-					squaresForDiscovery |= rookMoveMaskQueenSide;
-					allAfterMove ^= rookMoveMaskQueenSide;
-					minesAfterMove ^= rookMoveMaskQueenSide;
-					rookSlidersAftermove ^= rookMoveMaskQueenSide;
-					break;
+					// Regenerate bishop attacks to the other king
+					long newBishopAttacks = bbAttacks.GetBishopAttacks(attacksInfo.otherKingIndex, allAfterMove
+						);
+					if ((newBishopAttacks & bishopSlidersAfterMove & minesAfterMove) != 0)
+					{
+						check = true;
+					}
 				}
-			}
-			int newMyKingIndex = attacksInfo.myKingIndex;
-			if (pieceMoved == Move.King)
-			{
-				newMyKingIndex = toIndex;
-			}
-			// Candidates to leave the king in check after moving
-			if (((squaresForDiscovery & attacksInfo.bishopAttacksMyking) != 0) || ((attacksInfo
-				.piecesGivingCheck & (board.bishops | board.queens)) != 0 && pieceMoved == Move.
-				King))
-			{
-				// Moving the king when the king is in check by a slider
-				// Regenerate bishop attacks to my king
-				long newBishopAttacks = bbAttacks.GetBishopAttacks(newMyKingIndex, allAfterMove);
-				if ((newBishopAttacks & bishopSlidersAftermove & ~minesAfterMove) != 0)
+				if (!check && (squaresForDiscovery & attacksInfo.rookAttacksOtherking) != 0)
 				{
-					return;
-				}
-			}
-			// Illegal move
-			if (((squaresForDiscovery & attacksInfo.rookAttacksMyking) != 0) || ((attacksInfo
-				.piecesGivingCheck & (board.rooks | board.queens)) != 0 && pieceMoved == Move.King
-				))
-			{
-				// Regenerate rook attacks to my king
-				long newRookAttacks = bbAttacks.GetRookAttacks(newMyKingIndex, allAfterMove);
-				if ((newRookAttacks & rookSlidersAftermove & ~minesAfterMove) != 0)
-				{
-					return;
-				}
-			}
-			// Illegal move
-			// Discovered checks
-			if (!check && ((squaresForDiscovery & attacksInfo.bishopAttacksOtherking) != 0))
-			{
-				// Regenerate bishop attacks to the other king
-				long newBishopAttacks = bbAttacks.GetBishopAttacks(attacksInfo.otherKingIndex, allAfterMove
-					);
-				if ((newBishopAttacks & bishopSlidersAftermove & minesAfterMove) != 0)
-				{
-					check = true;
-				}
-			}
-			if (!check && ((squaresForDiscovery & attacksInfo.rookAttacksOtherking) != 0))
-			{
-				// Regenerate rook attacks to the other king
-				long newRookAttacks = bbAttacks.GetRookAttacks(attacksInfo.otherKingIndex, allAfterMove
-					);
-				if ((newRookAttacks & rookSlidersAftermove & minesAfterMove) != 0)
-				{
-					check = true;
+					// Regenerate rook attacks to the other king
+					long newRookAttacks = bbAttacks.GetRookAttacks(attacksInfo.otherKingIndex, allAfterMove
+						);
+					if ((newRookAttacks & rookSlidersAfterMove & minesAfterMove) != 0)
+					{
+						check = true;
+					}
 				}
 			}
 			// Generating checks, if the move is not a check, skip it
-			if ((movesToGenerate == GenerateCapturesPromosChecks) && !checkEvasion && !check 
-				&& !capture && (moveType != Move.TypePromotionQueen))
+			if (movesToGenerate == GenerateCapturesPromosChecks && !checkEvasion && !check &&
+				 !capture && moveType != Move.TypePromotionQueen)
 			{
 				return;
 			}
@@ -977,27 +996,37 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					}
 				}
 			}
-			int see = 0;
 			int pieceCaptured = capture ? Move.GetPieceCaptured(board, move) : 0;
-			if (capture || check)
+			int see = SeeNotCalculated;
+			if (capture || (movesToGenerate == GenerateCapturesPromosChecks && check))
 			{
-				see = board.See(fromIndex, toIndex, pieceMoved, pieceCaptured);
-				if ((movesToGenerate != GenerateAll) && !checkEvasion && (see < 0))
+				// If there aren't pieces attacking the destiny square
+				// and the piece cannot pin an attack to the see square,
+				// the see will be the captured piece value
+				if ((attacksInfo.attackedSquares[turn ? 1 : 0] & to) == 0 && (attacksInfo.mayPin 
+					& from) == 0)
 				{
-					return;
+					see = capture ? Board.SeePieceValues[pieceCaptured] : 0;
+				}
+				else
+				{
+					see = board.See(fromIndex, toIndex, pieceMoved, pieceCaptured);
 				}
 			}
-			if (capture && (see < 0))
+			if (movesToGenerate != GenerateAll && !checkEvasion && see < 0)
+			{
+				return;
+			}
+			if (capture && see < 0)
 			{
 				badCaptures[badCaptureIndex] = move;
-				badCapturesSee[badCaptureIndex] = see;
 				badCapturesScores[badCaptureIndex] = see;
 				badCaptureIndex++;
 				return;
 			}
 			bool underPromotion = moveType == Move.TypePromotionKnight || moveType == Move.TypePromotionRook
 				 || moveType == Move.TypePromotionBishop;
-			if ((capture || (moveType == Move.TypePromotionQueen)) & !underPromotion)
+			if ((capture || moveType == Move.TypePromotionQueen) && !underPromotion)
 			{
 				// Order GOOD captures by MVV/LVA (Hyatt dixit)
 				int score = 0;
@@ -1009,7 +1038,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 				{
 					score += ScorePromotionQueen;
 				}
-				if (see > 0 || (moveType == Move.TypePromotionQueen))
+				if (see > 0 || moveType == Move.TypePromotionQueen)
 				{
 					goodCaptures[goodCaptureIndex] = move;
 					goodCapturesSee[goodCaptureIndex] = see;

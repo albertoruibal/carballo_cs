@@ -10,7 +10,7 @@ namespace Com.Alonsoruibal.Chess
 {
 	/// <summary>
 	/// Stores the position and the move history
-	/// TODO FRC, Atomic, Suicide...
+	/// TODO Other chess variants like Atomic, Suicide, etc.
 	/// </summary>
 	/// <author>Alberto Alonso Ruibal</author>
 	public class Board
@@ -18,6 +18,48 @@ namespace Com.Alonsoruibal.Chess
 		public const int MaxMoves = 1024;
 
 		public const string FenStartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+		public static readonly string[] Chess960StartPositions = new string[] { "QNNRKR", 
+			"NQNRKR", "NNQRKR", "NNRQKR", "NNRKQR", "NNRKRQ", "QNRNKR", "NQRNKR", "NRQNKR", 
+			"NRNQKR", "NRNKQR", "NRNKRQ", "QNRKNR", "NQRKNR", "NRQKNR", "NRKQNR", "NRKNQR", 
+			"NRKNRQ", "QNRKRN", "NQRKRN", "NRQKRN", "NRKQRN", "NRKRQN", "NRKRNQ", "QRNNKR", 
+			"RQNNKR", "RNQNKR", "RNNQKR", "RNNKQR", "RNNKRQ", "QRNKNR", "RQNKNR", "RNQKNR", 
+			"RNKQNR", "RNKNQR", "RNKNRQ", "QRNKRN", "RQNKRN", "RNQKRN", "RNKQRN", "RNKRQN", 
+			"RNKRNQ", "QRKNNR", "RQKNNR", "RKQNNR", "RKNQNR", "RKNNQR", "RKNNRQ", "QRKNRN", 
+			"RQKNRN", "RKQNRN", "RKNQRN", "RKNRQN", "RKNRNQ", "QRKRNN", "RQKRNN", "RKQRNN", 
+			"RKRQNN", "RKRNQN", "RKRNNQ" };
+
+		public static readonly string[] Chess960StartPositionsBishops = new string[] { "BB------"
+			, "B--B----", "B----B--", "B------B", "-BB-----", "--BB----", "--B--B--", "--B----B"
+			, "-B--B---", "---BB---", "----BB--", "----B--B", "-B----B-", "---B--B-", "-----BB-"
+			, "------BB" };
+
+		private const long FlagTurn = unchecked((long)(0x0001L));
+
+		private const long FlagWhiteKingsideCastling = unchecked((long)(0x0002L));
+
+		private const long FlagWhiteQueensideCastling = unchecked((long)(0x0004L));
+
+		private const long FlagBlackKingsideCastling = unchecked((long)(0x0008L));
+
+		private const long FlagBlackQueensideCastling = unchecked((long)(0x0010L));
+
+		private const long FlagCheck = unchecked((long)(0x0020L));
+
+		private const long FlagsPassant = unchecked((long)(0x0000ff0000ff0000L));
+
+		public static readonly int[] CastlingKingDestinyIndex = new int[] { 1, 5, 57, 61 };
+
+		public static readonly long[] CastlingKingDestinySquare = new long[] { 1L << 1, 1L
+			 << 5, 1L << 57, 1L << 61 };
+
+		public static readonly int[] CastlingRookDestinyIndex = new int[] { 2, 4, 58, 60 };
+
+		public static readonly long[] CastlingRookDestinySquare = new long[] { 1L << 2, 1L
+			 << 4, 1L << 58, 1L << 60 };
+
+		public static readonly int[] SeePieceValues = new int[] { 0, 100, 325, 330, 500, 
+			900, 9999 };
 
 		internal LegalMoveGenerator legalMoveGenerator = new LegalMoveGenerator();
 
@@ -85,34 +127,24 @@ namespace Com.Alonsoruibal.Chess
 
 		public int[] seeGain;
 
-		private const long FlagTurn = unchecked((long)(0x0001L));
+		public long[] castlingRooks = new long[] { 0, 0, 0, 0 };
 
-		private const long FlagWhiteDisableKingsideCastling = unchecked((long)(0x0002L));
-
-		private const long FlagWhiteDisableQueensideCastling = unchecked((long)(0x0004L));
-
-		private const long FlagBlackDisableKingsideCastling = unchecked((long)(0x0008L));
-
-		private const long FlagBlackDisableQueensideCastling = unchecked((long)(0x0010L));
-
-		private const long FlagCheck = unchecked((long)(0x0020L));
-
-		private const long FlagsPassant = unchecked((long)(0x0000ff0000ff0000L));
-
-		public static readonly int[] SeePieceValues = new int[] { 0, 100, 325, 330, 500, 
-			900, 9999 };
+		public bool chess960;
 
 		internal BitboardAttacks bbAttacks;
 
 		public Board()
 		{
+			// Flags: must be changed only when moving
+			// Position on boarch in which is captured
+			// For the castlings {White Kingside, White Queenside, Black Kingside, Black Queenside}
+			// For the SEE SWAP algorithm
 			// if -1 then legal moves not generated
 			// Bitboard arrays
 			// History array indexed by moveNumber
 			// to detect draw by treefold
-			// Flags: must be changed only when moving
-			// Position on boarch in which is captured
-			// For the SEE SWAP algorithm
+			// Origin squares for the castling rook {White Kingside, White Queenside, Black Kingside, Black Queenside}
+			// basically decides the destiny square of the castlings
 			whitesHistory = new long[MaxMoves];
 			blacksHistory = new long[MaxMoves];
 			pawnsHistory = new long[MaxMoves];
@@ -294,10 +326,39 @@ namespace Com.Alonsoruibal.Chess
 			bbAttacks = BitboardAttacks.GetInstance();
 		}
 
-		/// <summary>It also computes the zobrish key</summary>
+		/// <summary>It also computes the zobrist key</summary>
 		public virtual void StartPosition()
 		{
 			SetFen(FenStartPosition);
+		}
+
+		/// <summary>
+		/// Set a Chess960 start position
+		/// http://en.wikipedia.org/wiki/Chess960_numbering_scheme
+		/// </summary>
+		public virtual void StartPosition(int chess960Position)
+		{
+			string @base = Chess960StartPositionsBishops[chess960Position & unchecked((int)(0x0f
+				))];
+			string otherPieces = Chess960StartPositions[(int)(((uint)chess960Position) >> 4)];
+			StringBuilder oSB = new StringBuilder();
+			int j = 0;
+			for (int i = 0; i < 8; i++)
+			{
+				if (@base[i] == '-')
+				{
+					oSB.Append(otherPieces[j]);
+					j++;
+				}
+				else
+				{
+					oSB.Append('B');
+				}
+			}
+			string fen = oSB.ToString().ToLower() + "/pppppppp/8/8/8/8/PPPPPPPP/" + oSB.ToString
+				() + " w KQkq - 0 1";
+			SetFen(fen);
+			chess960 = true;
 		}
 
 		public virtual long GetKey()
@@ -329,22 +390,22 @@ namespace Com.Alonsoruibal.Chess
 
 		public virtual bool GetWhiteKingsideCastling()
 		{
-			return (flags & FlagWhiteDisableKingsideCastling) == 0;
+			return (flags & FlagWhiteKingsideCastling) != 0;
 		}
 
 		public virtual bool GetWhiteQueensideCastling()
 		{
-			return (flags & FlagWhiteDisableQueensideCastling) == 0;
+			return (flags & FlagWhiteQueensideCastling) != 0;
 		}
 
 		public virtual bool GetBlackKingsideCastling()
 		{
-			return (flags & FlagBlackDisableKingsideCastling) == 0;
+			return (flags & FlagBlackKingsideCastling) != 0;
 		}
 
 		public virtual bool GetBlackQueensideCastling()
 		{
-			return (flags & FlagBlackDisableQueensideCastling) == 0;
+			return (flags & FlagBlackQueensideCastling) != 0;
 		}
 
 		public virtual long GetPassantSquare()
@@ -516,17 +577,14 @@ namespace Com.Alonsoruibal.Chess
 		}
 
 		/// <summary>Loads board from a fen notation</summary>
-		/// <param name="fen"/>
 		public virtual void SetFen(string fen)
 		{
 			SetFenMove(fen, null);
 		}
 
 		/// <summary>Sets fen without destroying move history.</summary>
-		/// <remarks>
-		/// Sets fen without destroying move history. If lastMove = null destroy the
-		/// move history
-		/// </remarks>
+		/// <remarks>Sets fen without destroying move history. If lastMove = null destroy the move history
+		/// 	</remarks>
 		public virtual void SetFenMove(string fen, string lastMove)
 		{
 			long tmpWhites = 0;
@@ -539,6 +597,7 @@ namespace Com.Alonsoruibal.Chess
 			long tmpKings = 0;
 			long tmpFlags;
 			int tmpFiftyMovesRule = 0;
+			long[] tmpCastlingRooks = new long[] { 0, 0, 0, 0 };
 			int fenMoveNumber = 0;
 			int i = 0;
 			long j = BitboardUtils.A8;
@@ -580,31 +639,137 @@ namespace Com.Alonsoruibal.Chess
 			// security
 			// Now the rest ...
 			string turn = tokens[1];
-			tmpFlags = FlagWhiteDisableKingsideCastling | FlagWhiteDisableQueensideCastling |
-				 FlagBlackDisableKingsideCastling | FlagBlackDisableQueensideCastling;
+			tmpFlags = 0;
 			if ("b".Equals(turn))
 			{
 				tmpFlags |= FlagTurn;
 			}
 			if (tokens.Length > 2)
 			{
-				string promotions = tokens[2];
-				if (promotions.Contains("K"))
+				// Set castling rights supporting XFEN to disambiguate positions in Chess960
+				string castlings = tokens[2];
+				chess960 = false;
+				// Squares to the sides of the kings {White Kingside, White Queenside, Black Kingside, Black Queenside}
+				long[] whiteKingLateralSquares = new long[] { BitboardUtils.b_d & ((tmpKings & tmpWhites
+					) - 1), BitboardUtils.b_d & ~(((tmpKings & tmpWhites) - 1) | tmpKings & tmpWhites
+					), BitboardUtils.b_u & ((tmpKings & tmpBlacks) - 1), BitboardUtils.b_u & ~(((tmpKings
+					 & tmpBlacks) - 1) | tmpKings & tmpBlacks) };
+				// Squares where we can find a castling rook
+				long[] possibleCastlingRookSquares = new long[] { 0, 0, 0, 0 };
+				for (int k = 0; k < castlings.Length; k++)
 				{
-					tmpFlags &= ~FlagWhiteDisableKingsideCastling;
+					char c = castlings[k];
+					switch (c)
+					{
+						case 'K':
+						{
+							possibleCastlingRookSquares[0] = whiteKingLateralSquares[0];
+							break;
+						}
+
+						case 'Q':
+						{
+							possibleCastlingRookSquares[1] = whiteKingLateralSquares[1];
+							break;
+						}
+
+						case 'k':
+						{
+							possibleCastlingRookSquares[2] = whiteKingLateralSquares[2];
+							break;
+						}
+
+						case 'q':
+						{
+							possibleCastlingRookSquares[3] = whiteKingLateralSquares[3];
+							break;
+						}
+
+						default:
+						{
+							// Shredder-FEN receives the name of the column where the castling rook is
+							int whiteColumn = "ABCDEFGH".IndexOf(c);
+							int blackColumn = "abcdefgh".IndexOf(c);
+							if (whiteColumn >= 0)
+							{
+								long rookSquare = BitboardUtils.b_d & BitboardUtils.Column[whiteColumn];
+								if ((rookSquare & whiteKingLateralSquares[0]) != 0)
+								{
+									possibleCastlingRookSquares[0] = rookSquare;
+								}
+								else
+								{
+									if ((rookSquare & whiteKingLateralSquares[1]) != 0)
+									{
+										possibleCastlingRookSquares[1] = rookSquare;
+									}
+								}
+							}
+							else
+							{
+								if (blackColumn >= 0)
+								{
+									long rookSquare = BitboardUtils.b_u & BitboardUtils.Column[blackColumn];
+									if ((rookSquare & whiteKingLateralSquares[2]) != 0)
+									{
+										possibleCastlingRookSquares[2] = rookSquare;
+									}
+									else
+									{
+										if ((rookSquare & whiteKingLateralSquares[3]) != 0)
+										{
+											possibleCastlingRookSquares[3] = rookSquare;
+										}
+									}
+								}
+							}
+							break;
+						}
+					}
 				}
-				if (promotions.Contains("Q"))
+				// Now store the squares of the castling rooks
+				tmpCastlingRooks[0] = BitboardUtils.Lsb(tmpRooks & tmpWhites & possibleCastlingRookSquares
+					[0]);
+				tmpCastlingRooks[1] = BitboardUtils.Msb(tmpRooks & tmpWhites & possibleCastlingRookSquares
+					[1]);
+				tmpCastlingRooks[2] = BitboardUtils.Lsb(tmpRooks & tmpBlacks & possibleCastlingRookSquares
+					[2]);
+				tmpCastlingRooks[3] = BitboardUtils.Msb(tmpRooks & tmpBlacks & possibleCastlingRookSquares
+					[3]);
+				// Set the castling flags and detect Chess960
+				if (tmpCastlingRooks[0] != 0)
 				{
-					tmpFlags &= ~FlagWhiteDisableQueensideCastling;
+					tmpFlags |= FlagWhiteKingsideCastling;
+					if ((tmpWhites & tmpKings) != 1L << 3 || tmpCastlingRooks[0] != 1L)
+					{
+						chess960 = true;
+					}
 				}
-				if (promotions.Contains("k"))
+				if (tmpCastlingRooks[1] != 0)
 				{
-					tmpFlags &= ~FlagBlackDisableKingsideCastling;
+					tmpFlags |= FlagWhiteQueensideCastling;
+					if ((tmpWhites & tmpKings) != 1L << 3 || tmpCastlingRooks[1] != 1L << 7)
+					{
+						chess960 = true;
+					}
 				}
-				if (promotions.Contains("q"))
+				if (tmpCastlingRooks[2] != 0)
 				{
-					tmpFlags &= ~FlagBlackDisableQueensideCastling;
+					tmpFlags |= FlagBlackKingsideCastling;
+					if ((tmpBlacks & tmpKings) != 1L << 59 || tmpCastlingRooks[2] != 1L << 56)
+					{
+						chess960 = true;
+					}
 				}
+				if (tmpCastlingRooks[3] != 0)
+				{
+					tmpFlags |= FlagBlackQueensideCastling;
+					if ((tmpBlacks & tmpKings) != 1L << 59 || tmpCastlingRooks[3] != 1L << 63)
+					{
+						chess960 = true;
+					}
+				}
+				// END FEN castlings
 				if (tokens.Length > 3)
 				{
 					string passant = tokens[3];
@@ -678,8 +843,11 @@ namespace Com.Alonsoruibal.Chess
 				fiftyMovesRule = tmpFiftyMovesRule;
 				// Flags are not completed till verify, so skip checking
 				flags = tmpFlags;
-				Verify();
-				// Finally set zobrish key and check flags
+				castlingRooks[0] = tmpCastlingRooks[0];
+				castlingRooks[1] = tmpCastlingRooks[1];
+				castlingRooks[2] = tmpCastlingRooks[2];
+				castlingRooks[3] = tmpCastlingRooks[3];
+				// Set zobrist key and check flags
 				key = ZobristKey.GetKey(this);
 				SetCheckFlags();
 				// and save history
@@ -692,33 +860,6 @@ namespace Com.Alonsoruibal.Chess
 				{
 					outBookMove = int.MaxValue;
 				}
-			}
-		}
-
-		/// <summary>Does some board verification</summary>
-		private void Verify()
-		{
-			// TODO Verify only one king per side
-			// Verify castling
-			if (GetWhiteKingsideCastling() && ((whites & kings & unchecked((int)(0x08))) == 0
-				 || (whites & rooks & unchecked((int)(0x01))) == 0))
-			{
-				flags |= FlagWhiteDisableKingsideCastling;
-			}
-			if (GetWhiteQueensideCastling() && ((whites & kings & unchecked((int)(0x08))) == 
-				0 || (whites & rooks & unchecked((int)(0x80))) == 0))
-			{
-				flags |= FlagWhiteDisableQueensideCastling;
-			}
-			if (GetBlackKingsideCastling() && ((blacks & kings & unchecked((long)(0x0800000000000000L
-				))) == 0 || (blacks & rooks & unchecked((long)(0x0100000000000000L))) == 0))
-			{
-				flags |= FlagBlackDisableKingsideCastling;
-			}
-			if (GetBlackQueensideCastling() && ((blacks & kings & unchecked((long)(0x0800000000000000L
-				))) == 0 || (blacks & rooks & unchecked((long)(0x8000000000000000L))) == 0))
-			{
-				flags |= FlagBlackDisableQueensideCastling;
 			}
 		}
 
@@ -740,8 +881,10 @@ namespace Com.Alonsoruibal.Chess
 				i = (long)(((ulong)i) >> 1);
 			}
 			sb.Append("a b c d e f g h  ");
-			sb.Append((GetTurn() ? "white move\n" : "blacks move\n"));
-			// sb.append(" " +getWhiteKingsideCastling()+getWhiteQueensideCastling()+getBlackKingsideCastling()+getBlackQueensideCastling());
+			sb.Append((GetTurn() ? "white move " : "blacks move "));
+			sb.Append((GetWhiteKingsideCastling() ? "K" : string.Empty) + (GetWhiteQueensideCastling
+				() ? "Q" : string.Empty) + (GetBlackKingsideCastling() ? "k" : string.Empty) + (
+				GetBlackQueensideCastling() ? "q" : string.Empty));
 			return sb.ToString();
 		}
 
@@ -766,9 +909,9 @@ namespace Com.Alonsoruibal.Chess
 			sanMoves.Clear();
 		}
 
-		private void SaveHistory(int move, bool fillInfo)
+		private void SaveHistory(int move, bool fillSanInfo)
 		{
-			if (fillInfo)
+			if (fillSanInfo)
 			{
 				sanMoves[moveNumber] = Move.ToSan(this, move);
 			}
@@ -796,25 +939,25 @@ namespace Com.Alonsoruibal.Chess
 			return moveHistory[moveNumber - 1];
 		}
 
+		/// <summary>This is very inefficient because it fills the San info, so it must not be called from inside search
+		/// 	</summary>
 		public virtual bool DoMove(int move)
 		{
 			return DoMove(move, true, true);
 		}
 
 		/// <summary>
-		/// Moves and also updates the board's zobrish key verify legality, if not
+		/// Moves and also updates the board's zobrist key verify legality, if not
 		/// legal undo move and return false 0 is the null move
 		/// </summary>
-		public virtual bool DoMove(int move, bool verify, bool fillInfo)
+		public virtual bool DoMove(int move, bool verify, bool fillSanInfo)
 		{
-			// logger.debug("Before move: \n" + toString() + "\n " +
-			// Move.toStringExt(move));
 			if (move == -1)
 			{
 				return false;
 			}
 			// Save history
-			SaveHistory(move, fillInfo);
+			SaveHistory(move, fillSanInfo);
 			int fromIndex = Move.GetFromIndex(move);
 			int toIndex = Move.GetToIndex(move);
 			long from = Move.GetFromSquare(move);
@@ -969,30 +1112,18 @@ namespace Com.Alonsoruibal.Chess
 					case Move.King:
 					{
 						// if castling, moves rooks too
-						long rookMoveMask = 0;
-						switch (moveType)
+						if (moveType == Move.TypeKingsideCastling || moveType == Move.TypeQueensideCastling)
 						{
-							case Move.TypeKingsideCastling:
-							{
-								// for the castling
-								rookMoveMask = (GetTurn() ? unchecked((long)(0x05L)) : unchecked((long)(0x0500000000000000L
-									)));
-								key[color] ^= ZobristKey.rook[color][toIndex - 1] ^ ZobristKey.rook[color][toIndex
-									 + 1];
-								break;
-							}
-
-							case Move.TypeQueensideCastling:
-							{
-								rookMoveMask = (GetTurn() ? unchecked((long)(0x90L)) : unchecked((long)(0x9000000000000000L
-									)));
-								key[color] ^= ZobristKey.rook[color][toIndex - 1] ^ ZobristKey.rook[color][toIndex
-									 + 2];
-								break;
-							}
-						}
-						if (rookMoveMask != 0)
-						{
+							// {White Kingside, White Queenside, Black Kingside, Black Queenside}
+							int j = (color << 1) + (moveType == Move.TypeQueensideCastling ? 1 : 0);
+							toIndex = CastlingKingDestinyIndex[j];
+							int originRookIndex = BitboardUtils.Square2Index(castlingRooks[j]);
+							int destinyRookIndex = CastlingRookDestinyIndex[j];
+							// Recalculate move mask for chess960 castlings
+							moveMask = from ^ (1L << toIndex);
+							long rookMoveMask = (1L << originRookIndex) ^ (1L << destinyRookIndex);
+							key[color] ^= ZobristKey.rook[color][originRookIndex] ^ ZobristKey.rook[color][destinyRookIndex
+								];
 							if (GetTurn())
 							{
 								whites ^= rookMoveMask;
@@ -1018,28 +1149,32 @@ namespace Com.Alonsoruibal.Chess
 					blacks ^= moveMask;
 				}
 				// Tests to disable castling
-				if ((moveMask & unchecked((long)(0x0000000000000009L))) != 0 && (flags & FlagWhiteDisableKingsideCastling
-					) == 0)
+				if ((flags & FlagWhiteKingsideCastling) != 0 && ((turn && pieceMoved == Move.King
+					) || from == castlingRooks[0] || to == castlingRooks[0]))
 				{
-					flags |= FlagWhiteDisableKingsideCastling;
+					//
+					flags &= ~FlagWhiteKingsideCastling;
 					key[0] ^= ZobristKey.whiteKingSideCastling;
 				}
-				if ((moveMask & unchecked((long)(0x0000000000000088L))) != 0 && (flags & FlagWhiteDisableQueensideCastling
-					) == 0)
+				if ((flags & FlagWhiteQueensideCastling) != 0 && ((turn && pieceMoved == Move.King
+					) || from == castlingRooks[1] || to == castlingRooks[1]))
 				{
-					flags |= FlagWhiteDisableQueensideCastling;
+					//
+					flags &= ~FlagWhiteQueensideCastling;
 					key[0] ^= ZobristKey.whiteQueenSideCastling;
 				}
-				if ((moveMask & unchecked((long)(0x0900000000000000L))) != 0 && (flags & FlagBlackDisableKingsideCastling
-					) == 0)
+				if ((flags & FlagBlackKingsideCastling) != 0 && ((!turn && pieceMoved == Move.King
+					) || from == castlingRooks[2] || to == castlingRooks[2]))
 				{
-					flags |= FlagBlackDisableKingsideCastling;
+					//
+					flags &= ~FlagBlackKingsideCastling;
 					key[1] ^= ZobristKey.blackKingSideCastling;
 				}
-				if ((moveMask & unchecked((long)(0x8800000000000000L))) != 0 && (flags & FlagBlackDisableQueensideCastling
-					) == 0)
+				if ((flags & FlagBlackQueensideCastling) != 0 && ((!turn && pieceMoved == Move.King
+					) || from == castlingRooks[3] || to == castlingRooks[3]))
 				{
-					flags |= FlagBlackDisableQueensideCastling;
+					//
+					flags &= ~FlagBlackQueensideCastling;
 					key[1] ^= ZobristKey.blackQueenSideCastling;
 				}
 			}
@@ -1051,9 +1186,8 @@ namespace Com.Alonsoruibal.Chess
 				if (IsValid())
 				{
 					SetCheckFlags();
-					if (fillInfo)
+					if (fillSanInfo)
 					{
-						GenerateLegalMoves();
 						if (IsMate())
 						{
 							// Append # when mate
@@ -1192,7 +1326,21 @@ namespace Com.Alonsoruibal.Chess
 		public virtual int See(int move)
 		{
 			return See(Move.GetFromIndex(move), Move.GetToIndex(move), Move.GetPieceMoved(move
-				), Move.GetPieceCaptured(this, move));
+				), Move.IsCapture(move) ? Move.GetPieceCaptured(this, move) : 0);
+		}
+
+		public virtual int See(int move, AttacksInfo attacksInfo)
+		{
+			if ((attacksInfo.attackedSquares[GetTurn() ? 1 : 0] & Move.GetToSquare(move)) == 
+				0 && (attacksInfo.mayPin & Move.GetFromSquare(move)) == 0)
+			{
+				return Move.IsCapture(move) ? Com.Alonsoruibal.Chess.Board.SeePieceValues[Move.GetPieceCaptured
+					(this, move)] : 0;
+			}
+			else
+			{
+				return See(move);
+			}
 		}
 
 		/// <summary>The SWAP algorithm https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
@@ -1283,9 +1431,7 @@ namespace Com.Alonsoruibal.Chess
 			this.outBookMove = outBookMove;
 		}
 
-		/// <summary>Check if a passed pawn is in the square, useful to trigger extensions</summary>
-		/// <param name="index"/>
-		/// <returns/>
+		/// <summary>Check if a passed pawn is in the index, useful to trigger extensions</summary>
 		public virtual bool IsPassedPawn(int index)
 		{
 			int rank = index >> 3;
@@ -1308,8 +1454,6 @@ namespace Com.Alonsoruibal.Chess
 		}
 
 		/// <summary>Returns true if move is legal</summary>
-		/// <param name="move"/>
-		/// <returns/>
 		public virtual bool IsMoveLegal(int move)
 		{
 			GenerateLegalMoves();

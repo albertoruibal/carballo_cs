@@ -11,7 +11,7 @@ namespace Com.Alonsoruibal.Chess.TT
 	/// <summary>
 	/// Transposition table using two keys and multiprobe
 	/// <p/>
-	/// Uses part of the board's zobrish key (shifted) as the index
+	/// Uses part of the board's zobrist key (shifted) as the index
 	/// </summary>
 	/// <author>rui</author>
 	public class TranspositionTable

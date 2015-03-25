@@ -6,6 +6,7 @@ namespace Com.Alonsoruibal.Chess
 {
 	/// <summary>
 	/// For efficiency Moves are int, this is a static class to threat with this
+	/// <p>
 	/// Move format (18 bits):
 	/// MTXCPPPFFFFFFTTTTTT
 	/// -------------^ To index (6 bits)
@@ -240,66 +241,63 @@ namespace Com.Alonsoruibal.Chess
 			int moveType = 0;
 			int pieceMoved = 0;
 			bool check = move.IndexOf("+") > 0 || move.IndexOf("#") > 0;
+			long mines = board.GetMines();
+			bool turn = board.GetTurn();
 			// Ignore checks, captures indicators...
 			move = move.Replace("+", string.Empty).Replace("x", string.Empty).Replace("-", string.Empty
 				).Replace("=", string.Empty).Replace("#", string.Empty).ReplaceAll(" ", string.Empty
 				).ReplaceAll("0", "o").ReplaceAll("O", "o");
-			if ("ooo".Equals(move))
+			if ("oo".Equals(move))
 			{
-				if (board.GetTurn())
-				{
-					move = "e1c1";
-				}
-				else
-				{
-					move = "e8c8";
-				}
+				move = BitboardUtils.SquareNames[BitboardUtils.Square2Index(board.kings & mines)]
+					 + BitboardUtils.SquareNames[BitboardUtils.Square2Index(board.chess960 ? board.castlingRooks
+					[turn ? 0 : 2] : Board.CastlingKingDestinySquare[turn ? 0 : 2])];
 			}
 			else
 			{
-				if ("oo".Equals(move))
+				//
+				if ("ooo".Equals(move))
 				{
-					if (board.GetTurn())
+					move = BitboardUtils.SquareNames[BitboardUtils.Square2Index(board.kings & mines)]
+						 + BitboardUtils.SquareNames[BitboardUtils.Square2Index(board.chess960 ? board.castlingRooks
+						[turn ? 1 : 3] : Board.CastlingKingDestinySquare[turn ? 1 : 3])];
+				}
+				else
+				{
+					//
+					char promo = move[move.Length - 1];
+					switch (System.Char.ToLower(promo))
 					{
-						move = "e1g1";
+						case 'q':
+						{
+							moveType = TypePromotionQueen;
+							break;
+						}
+
+						case 'n':
+						{
+							moveType = TypePromotionKnight;
+							break;
+						}
+
+						case 'b':
+						{
+							moveType = TypePromotionBishop;
+							break;
+						}
+
+						case 'r':
+						{
+							moveType = TypePromotionRook;
+							break;
+						}
 					}
-					else
+					// If promotion, remove the last char
+					if (moveType != 0)
 					{
-						move = "e8g8";
+						move = Sharpen.Runtime.Substring(move, 0, move.Length - 1);
 					}
 				}
-			}
-			char promo = move[move.Length - 1];
-			switch (System.Char.ToLower(promo))
-			{
-				case 'q':
-				{
-					moveType = TypePromotionQueen;
-					break;
-				}
-
-				case 'n':
-				{
-					moveType = TypePromotionKnight;
-					break;
-				}
-
-				case 'b':
-				{
-					moveType = TypePromotionBishop;
-					break;
-				}
-
-				case 'r':
-				{
-					moveType = TypePromotionRook;
-					break;
-				}
-			}
-			// If promotion, remove the last char
-			if (moveType != 0)
-			{
-				move = Sharpen.Runtime.Substring(move, 0, move.Length - 1);
 			}
 			// To is always the last 2 characters
 			toIndex = BitboardUtils.Algebraic2Index(Sharpen.Runtime.Substring(move, move.Length
@@ -312,34 +310,33 @@ namespace Com.Alonsoruibal.Chess
 				case 'N':
 				{
 					// Fills from with a mask of possible from values
-					from = board.knights & board.GetMines() & bbAttacks.knight[toIndex];
+					from = board.knights & mines & bbAttacks.knight[toIndex];
 					break;
 				}
 
 				case 'K':
 				{
-					from = board.kings & board.GetMines() & bbAttacks.king[toIndex];
+					from = board.kings & mines & bbAttacks.king[toIndex];
 					break;
 				}
 
 				case 'R':
 				{
-					from = board.rooks & board.GetMines() & bbAttacks.GetRookAttacks(toIndex, board.GetAll
-						());
+					from = board.rooks & mines & bbAttacks.GetRookAttacks(toIndex, board.GetAll());
 					break;
 				}
 
 				case 'B':
 				{
-					from = board.bishops & board.GetMines() & bbAttacks.GetBishopAttacks(toIndex, board
-						.GetAll());
+					from = board.bishops & mines & bbAttacks.GetBishopAttacks(toIndex, board.GetAll()
+						);
 					break;
 				}
 
 				case 'Q':
 				{
-					from = board.queens & board.GetMines() & (bbAttacks.GetRookAttacks(toIndex, board
-						.GetAll()) | bbAttacks.GetBishopAttacks(toIndex, board.GetAll()));
+					from = board.queens & mines & (bbAttacks.GetRookAttacks(toIndex, board.GetAll()) 
+						| bbAttacks.GetBishopAttacks(toIndex, board.GetAll()));
 					break;
 				}
 			}
@@ -353,22 +350,22 @@ namespace Com.Alonsoruibal.Chess
 				// Pawn moves
 				if (move.Length == 2)
 				{
-					if (board.GetTurn())
+					if (turn)
 					{
-						from = board.pawns & board.GetMines() & (((long)(((ulong)to) >> 8)) | ((((long)((
-							(ulong)to) >> 8)) & board.GetAll()) == 0 ? ((long)(((ulong)to) >> 16)) : 0));
+						from = board.pawns & mines & (((long)(((ulong)to) >> 8)) | ((((long)(((ulong)to) 
+							>> 8)) & board.GetAll()) == 0 ? ((long)(((ulong)to) >> 16)) : 0));
 					}
 					else
 					{
-						from = board.pawns & board.GetMines() & ((to << 8) | (((to << 8) & board.GetAll()
-							) == 0 ? (to << 16) : 0));
+						from = board.pawns & mines & ((to << 8) | (((to << 8) & board.GetAll()) == 0 ? (to
+							 << 16) : 0));
 					}
 				}
 				if (move.Length == 3)
 				{
 					// Pawn capture
-					from = board.pawns & board.GetMines() & (board.GetTurn() ? bbAttacks.pawnDownwards
-						[toIndex] : bbAttacks.pawnUpwards[toIndex]);
+					from = board.pawns & mines & (turn ? bbAttacks.pawnDownwards[toIndex] : bbAttacks
+						.pawnUpwards[toIndex]);
 				}
 			}
 			if (move.Length == 3)
@@ -450,17 +447,17 @@ namespace Com.Alonsoruibal.Chess
 								if ((myFrom & board.kings) != 0)
 								{
 									pieceMoved = King;
-									// Only if origin square is king's initial square TODO FRC
-									if (fromIndex == 3 || fromIndex == 3 + (8 * 7))
+									if ((turn ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling()) 
+										&& (toIndex == (fromIndex - 2) || to == board.castlingRooks[turn ? 0 : 2]))
 									{
-										if (toIndex == (fromIndex + 2))
-										{
-											moveType = TypeQueensideCastling;
-										}
-										if (toIndex == (fromIndex - 2))
-										{
-											moveType = TypeKingsideCastling;
-										}
+										//
+										moveType = TypeKingsideCastling;
+									}
+									if ((turn ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling()
+										) && (toIndex == (fromIndex + 2) || to == board.castlingRooks[turn ? 1 : 3]))
+									{
+										//
+										moveType = TypeQueensideCastling;
 									}
 								}
 							}
@@ -468,7 +465,7 @@ namespace Com.Alonsoruibal.Chess
 					}
 				}
 				// Now set captured piece flag
-				if ((to & (board.whites | board.blacks)) != 0)
+				if ((to & (turn ? board.blacks : board.whites)) != 0)
 				{
 					capture = true;
 				}

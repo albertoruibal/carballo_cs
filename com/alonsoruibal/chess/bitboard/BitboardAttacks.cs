@@ -154,6 +154,21 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			return IsIndexAttacked(board, BitboardUtils.Square2Index(square), white);
 		}
 
+		public virtual bool AreSquaresAttacked(Board board, long squares, bool white)
+		{
+			while (squares != 0)
+			{
+				long square = BitboardUtils.Lsb(squares);
+				bool attacked = IsIndexAttacked(board, BitboardUtils.Square2Index(square), white);
+				if (attacked)
+				{
+					return true;
+				}
+				squares ^= square;
+			}
+			return false;
+		}
+
 		/// <summary>Discover attacks to squares using magics: cheap version</summary>
 		public virtual bool IsIndexAttacked(Board board, byte index, bool white)
 		{

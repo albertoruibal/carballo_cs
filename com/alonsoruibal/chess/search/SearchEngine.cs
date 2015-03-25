@@ -212,6 +212,10 @@ namespace Com.Alonsoruibal.Chess.Search
 		public virtual void Init()
 		{
 			initialized = false;
+			if (config.IsUciChess960())
+			{
+				board.chess960 = true;
+			}
 			board.StartPosition();
 			sortInfo.Clear();
 			string evaluatorName = config.GetEvaluator();
@@ -586,7 +590,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			int ttDepthAnalyzed = 0;
 			int score = 0;
 			ttProbe++;
-			bool foundTT = tt.Search(board, distanceToInitialPly, excludedMove != 0);
+			bool foundTT = tt.Search(board, distanceToInitialPly, excludedMove != Move.None);
 			if (foundTT)
 			{
 				if (nodeType != NodeRoot && CanUseTT(depthRemaining, alpha, beta))
@@ -663,8 +667,8 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 				// Null move pruning and mate threat detection
 				if (nodeType == NodeNull && config.GetNullMove() && allowNullMove && depthRemaining
-					 > 3 * Ply && Math.Abs(beta) < ValueIsMate && eval > beta - (depthRemaining >= 4
-					 * Ply ? config.GetNullMoveMargin() : 0) && BoardAllowsNullMove())
+					 >= 2 * Ply && Math.Abs(beta) < ValueIsMate && eval >= beta && BoardAllowsNullMove
+					())
 				{
 					//
 					//
@@ -673,14 +677,10 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					//
 					nullMoveProbe++;
+					int R = 3 * Ply + ((int)(((uint)depthRemaining) >> 2));
 					board.DoMove(0, false, false);
-					int R = 3 * Ply + (depthRemaining >= 5 * Ply ? depthRemaining / (4 * Ply) : 0);
-					if (eval - beta > ExperimentalEvaluator.Pawn)
-					{
-						R++;
-					}
-					// TODO TEST adding PLY
-					score = -Search(NodeNull, depthRemaining - R, -beta, -beta + 1, false, 0);
+					score = depthRemaining - R < Ply ? -QuiescentSearch(0, -beta, -beta + 1) : -Search
+						(NodeNull, depthRemaining - R, -beta, -beta + 1, false, Move.None);
 					board.UndoMove();
 					if (score >= beta)
 					{
@@ -689,8 +689,9 @@ namespace Com.Alonsoruibal.Chess.Search
 							score = beta;
 						}
 						// Verification search on initial depths
-						if (depthRemaining < 6 * Ply || Search(NodeNull, depthRemaining - 5 * Ply, beta -
-							 1, beta, false, 0) >= beta)
+						if (depthRemaining < 12 * Ply || (depthRemaining - R < Ply ? QuiescentSearch(0, beta
+							 - 1, beta) : Search(NodeNull, depthRemaining - R, beta - 1, beta, false, Move.None
+							)) >= beta)
 						{
 							//
 							nullMoveHit++;
@@ -784,8 +785,8 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					singularExtensionProbe++;
 					int seBeta = ttScore - config.GetSingularExtensionMargin();
-					int excScore = depthRemaining >> 1 < Ply ? QuiescentSearch(0, seBeta - 1, seBeta)
-						 : Search(nodeType, depthRemaining >> 1, seBeta - 1, seBeta, false, move);
+					int excScore = Search(nodeType, depthRemaining >> 1, seBeta - 1, seBeta, false, move
+						);
 					if (excScore < seBeta)
 					{
 						singularExtensionHit++;
@@ -829,7 +830,8 @@ namespace Com.Alonsoruibal.Chess.Search
 				{
 					// PV move not null searched
 					score = depthRemaining + extension - Ply < Ply ? -QuiescentSearch(0, -beta, -lowBound
-						) : -Search(NodePv, depthRemaining + extension - Ply, -beta, -lowBound, true, 0);
+						) : -Search(NodePv, depthRemaining + extension - Ply, -beta, -lowBound, true, Move
+						.None);
 				}
 				else
 				{
@@ -847,14 +849,14 @@ namespace Com.Alonsoruibal.Chess.Search
 					{
 						score = depthRemaining - reduction - Ply < Ply ? -QuiescentSearch(0, -lowBound - 
 							1, -lowBound) : -Search(NodeNull, depthRemaining - reduction - Ply, -lowBound - 
-							1, -lowBound, true, 0);
+							1, -lowBound, true, Move.None);
 						doFullSearch = (score > lowBound);
 					}
 					if (doFullSearch)
 					{
 						score = depthRemaining + extension - Ply < Ply ? -QuiescentSearch(0, -lowBound - 
 							1, -lowBound) : -Search(NodeNull, depthRemaining + extension - Ply, -lowBound - 
-							1, -lowBound, true, 0);
+							1, -lowBound, true, Move.None);
 						// Finally search as PV if score on window
 						if ((nodeType == NodePv || nodeType == NodeRoot) && score > lowBound && (nodeType
 							 == NodeRoot || score < beta))
@@ -862,7 +864,8 @@ namespace Com.Alonsoruibal.Chess.Search
 							//
 							//
 							score = depthRemaining + extension - Ply < Ply ? -QuiescentSearch(0, -beta, -lowBound
-								) : -Search(NodePv, depthRemaining + extension - Ply, -beta, -lowBound, true, 0);
+								) : -Search(NodePv, depthRemaining + extension - Ply, -beta, -lowBound, true, Move
+								.None);
 						}
 					}
 				}
@@ -929,7 +932,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			}
 			// Save in the transposition table
 			tt.Save(board, distanceToInitialPly, depthRemaining, bestMove, bestScore, alpha, 
-				beta, staticEval, excludedMove != 0);
+				beta, staticEval, excludedMove != Move.None);
 			return bestScore;
 		}
 
@@ -1096,14 +1099,14 @@ namespace Com.Alonsoruibal.Chess.Search
 			while (true)
 			{
 				aspirationWindowProbe++;
-				rootScore = Search(NodeRoot, depth * Ply, alpha, beta, false, 0);
+				rootScore = Search(NodeRoot, depth * Ply, alpha, beta, false, Move.None);
 				// logger.debug("alpha = " + alpha + ", beta = " + beta + ", rootScore=" + rootScore);
 				if (rootScore <= alpha)
 				{
 					failLowCount++;
 					alpha = (failLowCount < aspWindows.Length && (initialScore - aspWindows[failLowCount
 						] > -Evaluator.Victory) ? initialScore - aspWindows[failLowCount] : -Evaluator.Victory
-						);
+						 - 1);
 				}
 				else
 				{
@@ -1112,7 +1115,7 @@ namespace Com.Alonsoruibal.Chess.Search
 						failHighCount++;
 						beta = (failHighCount < aspWindows.Length && (initialScore + aspWindows[failHighCount
 							] < Evaluator.Victory) ? initialScore + aspWindows[failHighCount] : Evaluator.Victory
-							);
+							 + 1);
 					}
 					else
 					{
@@ -1193,7 +1196,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			IList<long> keys = new AList<long>();
 			// To not repeat keys
 			sb.Append(Move.ToString(firstMove));
-			board.DoMove(firstMove);
+			board.DoMove(firstMove, true, false);
 			int i = 1;
 			while (i < 256)
 			{

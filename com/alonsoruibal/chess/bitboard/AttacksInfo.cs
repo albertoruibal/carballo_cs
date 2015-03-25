@@ -5,7 +5,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 {
 	/// <summary>
 	/// Holds all the possible attacks for a board
-	/// It is used by the evaluators and the move iterator
+	/// It is used by the evaluators and the move iterator, and also to speed the SEE calculations detecting not attacked squares
 	/// Calculates the checking pieces and the interpose squares to avoid checks
 	/// </summary>
 	public class AttacksInfo
@@ -17,6 +17,8 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		public long[] attacksFromSquare = new long[64];
 
 		public long[] attackedSquares = new long[] { 0, 0 };
+
+		public long mayPin;
 
 		public long piecesGivingCheck;
 
@@ -36,6 +38,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public AttacksInfo()
 		{
+			// bot my pieces than can discover an attack and the opponent pieces pinned, that is any piece attacked by a slider
 			//
 			// Squares with possible ray attacks to the kings: used to detect check and move legality
 			//
@@ -61,6 +64,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			rookAttacksOtherking = bbAttacks.GetRookAttacks(otherKingIndex, all);
 			attackedSquares[0] = 0;
 			attackedSquares[1] = 0;
+			mayPin = 0;
 			piecesGivingCheck = 0;
 			interposeCheckSquares = 0;
 			long pieceAttacks;
@@ -96,7 +100,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 								if ((square & (board.bishops | board.queens)) != 0)
 								{
 									long sliderAttacks = bbAttacks.GetBishopAttacks(index, all);
-									if (((square & mines) == 0) && (sliderAttacks & myKing) != 0)
+									if ((square & mines) == 0 && (sliderAttacks & myKing) != 0)
 									{
 										interposeCheckSquares |= sliderAttacks & bishopAttacksMyking;
 									}
@@ -106,19 +110,20 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 								if ((square & (board.rooks | board.queens)) != 0)
 								{
 									long sliderAttacks = bbAttacks.GetRookAttacks(index, all);
-									if (((square & mines) == 0) && (sliderAttacks & myKing) != 0)
+									if ((square & mines) == 0 && (sliderAttacks & myKing) != 0)
 									{
 										interposeCheckSquares |= sliderAttacks & rookAttacksMyking;
 									}
 									// And with only the rook attacks to the king
 									pieceAttacks |= sliderAttacks;
 								}
+								mayPin |= all & pieceAttacks;
 							}
 						}
 					}
 					attackedSquares[color] |= pieceAttacks;
 					attacksFromSquare[index] = pieceAttacks;
-					if (((square & mines) == 0) && (pieceAttacks & myKing) != 0)
+					if ((square & mines) == 0 && (pieceAttacks & myKing) != 0)
 					{
 						piecesGivingCheck |= square;
 					}
