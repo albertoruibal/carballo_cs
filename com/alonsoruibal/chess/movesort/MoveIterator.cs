@@ -57,7 +57,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private Board board;
 
-		private AttacksInfo attacksInfo;
+		private AttacksInfo ai;
 
 		private int ttMove;
 
@@ -84,6 +84,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		private bool foundKiller4;
 
 		public bool checkEvasion;
+
+		private int us;
+
+		private int them;
 
 		private bool turn;
 
@@ -145,8 +149,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		// Stores non captures and underpromotions
 		public virtual int GetLastMoveSee()
 		{
-			return lastMoveSee != SeeNotCalculated ? lastMoveSee : board.See(move, attacksInfo
-				);
+			return lastMoveSee != SeeNotCalculated ? lastMoveSee : board.See(move, ai);
 		}
 
 		public virtual void GenMoves(int ttMove)
@@ -165,7 +168,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private void InitMoveGen()
 		{
-			attacksInfo.Build(board);
+			ai.Build(board);
 			killer1 = sortInfo.killerMove1[depth];
 			killer2 = sortInfo.killerMove2[depth];
 			killer3 = depth < 2 ? Move.None : sortInfo.killerMove1[depth - 2];
@@ -180,6 +183,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			nonCaptureIndex = 0;
 			// Only for clarity
 			turn = board.GetTurn();
+			us = turn ? 0 : 1;
+			them = turn ? 1 : 0;
 			all = board.GetAll();
 			mines = board.GetMines();
 			others = board.GetOthers();
@@ -366,11 +371,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			}
 		}
 
-		public MoveIterator(Board board, AttacksInfo attacksInfo, SortInfo sortInfo, int 
-			depth)
+		public MoveIterator(Board board, AttacksInfo ai, SortInfo sortInfo, int depth)
 		{
 			this.board = board;
-			this.attacksInfo = attacksInfo;
+			this.ai = ai;
 			this.sortInfo = sortInfo;
 			this.depth = depth;
 			bbAttacks = BitboardAttacks.GetInstance();
@@ -392,40 +396,40 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					if ((square & board.rooks) != 0)
 					{
 						// Rook
-						GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.attacksFromSquare[
-							index] & others, true);
+						GenerateMovesFromAttacks(Piece.Rook, index, square, ai.attacksFromSquare[index] &
+							 others, true);
 					}
 					else
 					{
 						if ((square & board.bishops) != 0)
 						{
 							// Bishop
-							GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.attacksFromSquare
-								[index] & others, true);
+							GenerateMovesFromAttacks(Piece.Bishop, index, square, ai.attacksFromSquare[index]
+								 & others, true);
 						}
 						else
 						{
 							if ((square & board.queens) != 0)
 							{
 								// Queen
-								GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.attacksFromSquare
-									[index] & others, true);
+								GenerateMovesFromAttacks(Piece.Queen, index, square, ai.attacksFromSquare[index] 
+									& others, true);
 							}
 							else
 							{
 								if ((square & board.kings) != 0)
 								{
 									// King
-									GenerateMovesFromAttacks(Move.King, index, square, attacksInfo.attacksFromSquare[
-										index] & others & ~attacksInfo.attackedSquares[turn ? 1 : 0], true);
+									GenerateMovesFromAttacks(Piece.King, index, square, ai.attacksFromSquare[index] &
+										 others & ~ai.attackedSquaresAlsoPinned[them], true);
 								}
 								else
 								{
 									if ((square & board.knights) != 0)
 									{
 										// Knight
-										GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.attacksFromSquare
-											[index] & others, true);
+										GenerateMovesFromAttacks(Piece.Knight, index, square, ai.attacksFromSquare[index]
+											 & others, true);
 									}
 									else
 									{
@@ -434,19 +438,19 @@ namespace Com.Alonsoruibal.Chess.Movesort
 											// Pawns
 											if (turn)
 											{
-												GeneratePawnCapturesOrGoodPromos(index, square, (attacksInfo.attacksFromSquare[index
-													] & (others | board.GetPassantSquare())) | (((square & BitboardUtils.b2_u) != 0)
-													 && (((square << 8) & all) == 0) ? (square << 8) : 0), board.GetPassantSquare());
+												GeneratePawnCapturesOrGoodPromos(index, square, (ai.attacksFromSquare[index] & (others
+													 | board.GetPassantSquare())) | (((square & BitboardUtils.b2_u) != 0) && (((square
+													 << 8) & all) == 0) ? (square << 8) : 0), board.GetPassantSquare());
 											}
 											else
 											{
 												//
 												//
 												// Pushes only if promotion
-												GeneratePawnCapturesOrGoodPromos(index, square, (attacksInfo.attacksFromSquare[index
-													] & (others | board.GetPassantSquare())) | (((square & BitboardUtils.b2_d) != 0)
-													 && ((((long)(((ulong)square) >> 8)) & all) == 0) ? ((long)(((ulong)square) >> 8
-													)) : 0), board.GetPassantSquare());
+												GeneratePawnCapturesOrGoodPromos(index, square, (ai.attacksFromSquare[index] & (others
+													 | board.GetPassantSquare())) | (((square & BitboardUtils.b2_d) != 0) && ((((long
+													)(((ulong)square) >> 8)) & all) == 0) ? ((long)(((ulong)square) >> 8)) : 0), board
+													.GetPassantSquare());
 											}
 										}
 									}
@@ -473,40 +477,40 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					if ((square & board.rooks) != 0)
 					{
 						// Rook
-						GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.attacksFromSquare[
-							index] & ~all, false);
+						GenerateMovesFromAttacks(Piece.Rook, index, square, ai.attacksFromSquare[index] &
+							 ~all, false);
 					}
 					else
 					{
 						if ((square & board.bishops) != 0)
 						{
 							// Bishop
-							GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.attacksFromSquare
-								[index] & ~all, false);
+							GenerateMovesFromAttacks(Piece.Bishop, index, square, ai.attacksFromSquare[index]
+								 & ~all, false);
 						}
 						else
 						{
 							if ((square & board.queens) != 0)
 							{
 								// Queen
-								GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.attacksFromSquare
-									[index] & ~all, false);
+								GenerateMovesFromAttacks(Piece.Queen, index, square, ai.attacksFromSquare[index] 
+									& ~all, false);
 							}
 							else
 							{
 								if ((square & board.kings) != 0)
 								{
 									// King
-									GenerateMovesFromAttacks(Move.King, index, square, attacksInfo.attacksFromSquare[
-										index] & ~all & ~attacksInfo.attackedSquares[turn ? 1 : 0], false);
+									GenerateMovesFromAttacks(Piece.King, index, square, ai.attacksFromSquare[index] &
+										 ~all & ~ai.attackedSquaresAlsoPinned[them], false);
 								}
 								else
 								{
 									if ((square & board.knights) != 0)
 									{
 										// Knight
-										GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.attacksFromSquare
-											[index] & ~all, false);
+										GenerateMovesFromAttacks(Piece.Knight, index, square, ai.attacksFromSquare[index]
+											 & ~all, false);
 									}
 								}
 							}
@@ -543,12 +547,12 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					long kingOrigin = board.kings & mines;
 					long kingDestiny = Board.CastlingKingDestinySquare[turn ? 0 : 2];
 					long kingRoute = BitboardUtils.GetHorizontalLine(kingOrigin, kingDestiny) & ~kingOrigin;
-					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (attacksInfo
-						.attackedSquares[turn ? 1 : 0] & kingRoute) == 0)
+					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (ai.attackedSquaresAlsoPinned
+						[them] & kingRoute) == 0)
 					{
 						//
-						AddMove(Move.King, attacksInfo.myKingIndex, kingOrigin, board.chess960 ? rookOrigin
-							 : kingDestiny, false, Move.TypeKingsideCastling);
+						AddMove(Piece.King, ai.kingIndex[us], kingOrigin, board.chess960 ? rookOrigin : kingDestiny
+							, false, Move.TypeKingsideCastling);
 					}
 				}
 				if (turn ? board.GetWhiteQueensideCastling() : board.GetBlackQueensideCastling())
@@ -559,12 +563,12 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					long kingOrigin = board.kings & mines;
 					long kingDestiny = Board.CastlingKingDestinySquare[turn ? 1 : 3];
 					long kingRoute = BitboardUtils.GetHorizontalLine(kingDestiny, kingOrigin) & ~kingOrigin;
-					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (attacksInfo
-						.attackedSquares[turn ? 1 : 0] & kingRoute) == 0)
+					if ((all & (kingRoute | rookRoute) & ~rookOrigin & ~kingOrigin) == 0 && (ai.attackedSquaresAlsoPinned
+						[them] & kingRoute) == 0)
 					{
 						//
-						AddMove(Move.King, attacksInfo.myKingIndex, kingOrigin, board.chess960 ? rookOrigin
-							 : kingDestiny, false, Move.TypeQueensideCastling);
+						AddMove(Piece.King, ai.kingIndex[us], kingOrigin, board.chess960 ? rookOrigin : kingDestiny
+							, false, Move.TypeQueensideCastling);
 					}
 				}
 			}
@@ -573,10 +577,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		public virtual void GenerateCheckEvasionCaptures()
 		{
 			// King can capture one of the checking pieces if two pieces giving check
-			GenerateMovesFromAttacks(Move.King, attacksInfo.myKingIndex, board.kings & mines, 
-				others & attacksInfo.attacksFromSquare[attacksInfo.myKingIndex] & ~attacksInfo.attackedSquares
-				[turn ? 1 : 0], true);
-			if (BitboardUtils.PopCount(attacksInfo.piecesGivingCheck) == 1)
+			GenerateMovesFromAttacks(Piece.King, ai.kingIndex[us], board.kings & mines, others
+				 & ai.attacksFromSquare[ai.kingIndex[us]] & ~ai.attackedSquaresAlsoPinned[them], 
+				true);
+			if (BitboardUtils.PopCount(ai.piecesGivingCheck) == 1)
 			{
 				long square = 1;
 				for (int index = 0; index < 64; index++)
@@ -591,13 +595,12 @@ namespace Com.Alonsoruibal.Chess.Movesort
 							if ((square & (turn ? BitboardUtils.b2_u : BitboardUtils.b2_d)) != 0)
 							{
 								// Pawn about to promote
-								destinySquares = attacksInfo.interposeCheckSquares & (turn ? (((square << 8) & all
-									) == 0 ? (square << 8) : 0) : ((((long)(((ulong)square) >> 8)) & all) == 0 ? ((long
-									)(((ulong)square) >> 8)) : 0));
+								destinySquares = ai.interposeCheckSquares & (turn ? (((square << 8) & all) == 0 ? 
+									(square << 8) : 0) : ((((long)(((ulong)square) >> 8)) & all) == 0 ? ((long)(((ulong
+									)square) >> 8)) : 0));
 							}
 							// Pawn captures the checking piece
-							destinySquares |= (attacksInfo.attacksFromSquare[index] & attacksInfo.piecesGivingCheck
-								);
+							destinySquares |= (ai.attacksFromSquare[index] & ai.piecesGivingCheck);
 							if (destinySquares != 0)
 							{
 								GeneratePawnCapturesOrGoodPromos(index, square, destinySquares, board.GetPassantSquare
@@ -605,18 +608,18 @@ namespace Com.Alonsoruibal.Chess.Movesort
 							}
 							else
 							{
-								if (board.GetPassantSquare() != 0 && (attacksInfo.attacksFromSquare[index] & board
-									.GetPassantSquare()) != 0)
+								if (board.GetPassantSquare() != 0 && (ai.attacksFromSquare[index] & board.GetPassantSquare
+									()) != 0)
 								{
 									// This pawn can capture to the passant square
-									long testPassantSquare = (turn ? attacksInfo.piecesGivingCheck << 8 : (long)(((ulong
-										)attacksInfo.piecesGivingCheck) >> 8));
+									long testPassantSquare = (turn ? ai.piecesGivingCheck << 8 : (long)(((ulong)ai.piecesGivingCheck
+										) >> 8));
 									if (testPassantSquare == board.GetPassantSquare() || (board.GetPassantSquare() & 
-										attacksInfo.interposeCheckSquares) != 0)
+										ai.interposeCheckSquares) != 0)
 									{
 										// En-passant capture target giving check
 										// En passant capture to interpose
-										AddMove(Move.Pawn, index, square, board.GetPassantSquare(), true, Move.TypePassant
+										AddMove(Piece.Pawn, index, square, board.GetPassantSquare(), true, Move.TypePassant
 											);
 									}
 								}
@@ -624,37 +627,33 @@ namespace Com.Alonsoruibal.Chess.Movesort
 						}
 						else
 						{
-							if (((attacksInfo.attacksFromSquare[index] & attacksInfo.piecesGivingCheck)) != 0)
+							if (((ai.attacksFromSquare[index] & ai.piecesGivingCheck)) != 0)
 							{
 								if ((square & board.rooks) != 0)
 								{
 									// Rook
-									GenerateMovesFromAttacks(Move.Rook, index, square, attacksInfo.piecesGivingCheck, 
-										true);
+									GenerateMovesFromAttacks(Piece.Rook, index, square, ai.piecesGivingCheck, true);
 								}
 								else
 								{
 									if ((square & board.bishops) != 0)
 									{
 										// Bishop
-										GenerateMovesFromAttacks(Move.Bishop, index, square, attacksInfo.piecesGivingCheck
-											, true);
+										GenerateMovesFromAttacks(Piece.Bishop, index, square, ai.piecesGivingCheck, true);
 									}
 									else
 									{
 										if ((square & board.queens) != 0)
 										{
 											// Queen
-											GenerateMovesFromAttacks(Move.Queen, index, square, attacksInfo.piecesGivingCheck
-												, true);
+											GenerateMovesFromAttacks(Piece.Queen, index, square, ai.piecesGivingCheck, true);
 										}
 										else
 										{
 											if ((square & board.knights) != 0)
 											{
 												// Knight
-												GenerateMovesFromAttacks(Move.Knight, index, square, attacksInfo.piecesGivingCheck
-													, true);
+												GenerateMovesFromAttacks(Piece.Knight, index, square, ai.piecesGivingCheck, true);
 											}
 										}
 									}
@@ -670,11 +669,10 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		public virtual void GenerateCheckEvasionsNonCaptures()
 		{
 			// Moving king (without captures)
-			GenerateMovesFromAttacks(Move.King, attacksInfo.myKingIndex, board.kings & mines, 
-				attacksInfo.attacksFromSquare[attacksInfo.myKingIndex] & ~all & ~attacksInfo.attackedSquares
-				[turn ? 1 : 0], false);
+			GenerateMovesFromAttacks(Piece.King, ai.kingIndex[us], board.kings & mines, ai.attacksFromSquare
+				[ai.kingIndex[us]] & ~all & ~ai.attackedSquaresAlsoPinned[them], false);
 			// Interpose: Cannot interpose with more than one piece giving check
-			if (BitboardUtils.PopCount(attacksInfo.piecesGivingCheck) == 1)
+			if (BitboardUtils.PopCount(ai.piecesGivingCheck) == 1)
 			{
 				long square = 1;
 				for (int index = 0; index < 64; index++)
@@ -686,16 +684,16 @@ namespace Com.Alonsoruibal.Chess.Movesort
 							long destinySquares;
 							if (turn)
 							{
-								destinySquares = attacksInfo.interposeCheckSquares & ((((square << 8) & all) == 0
-									 ? (square << 8) : 0) | ((square & BitboardUtils.b2_d) != 0 && (((square << 8) |
-									 (square << 16)) & all) == 0 ? (square << 16) : 0));
+								destinySquares = ai.interposeCheckSquares & ((((square << 8) & all) == 0 ? (square
+									 << 8) : 0) | ((square & BitboardUtils.b2_d) != 0 && (((square << 8) | (square <<
+									 16)) & all) == 0 ? (square << 16) : 0));
 							}
 							else
 							{
-								destinySquares = attacksInfo.interposeCheckSquares & (((((long)(((ulong)square) >>
-									 8)) & all) == 0 ? ((long)(((ulong)square) >> 8)) : 0) | ((square & BitboardUtils
-									.b2_u) != 0 && ((((long)(((ulong)square) >> 8)) | ((long)(((ulong)square) >> 16)
-									)) & all) == 0 ? ((long)(((ulong)square) >> 16)) : 0));
+								destinySquares = ai.interposeCheckSquares & (((((long)(((ulong)square) >> 8)) & all
+									) == 0 ? ((long)(((ulong)square) >> 8)) : 0) | ((square & BitboardUtils.b2_u) !=
+									 0 && ((((long)(((ulong)square) >> 8)) | ((long)(((ulong)square) >> 16))) & all)
+									 == 0 ? ((long)(((ulong)square) >> 16)) : 0));
 							}
 							if (destinySquares != 0)
 							{
@@ -704,35 +702,34 @@ namespace Com.Alonsoruibal.Chess.Movesort
 						}
 						else
 						{
-							long destinySquares = attacksInfo.attacksFromSquare[index] & attacksInfo.interposeCheckSquares
-								 & ~all;
+							long destinySquares = ai.attacksFromSquare[index] & ai.interposeCheckSquares & ~all;
 							if (destinySquares != 0)
 							{
 								if ((square & board.rooks) != 0)
 								{
 									// Rook
-									GenerateMovesFromAttacks(Move.Rook, index, square, destinySquares, false);
+									GenerateMovesFromAttacks(Piece.Rook, index, square, destinySquares, false);
 								}
 								else
 								{
 									if ((square & board.bishops) != 0)
 									{
 										// Bishop
-										GenerateMovesFromAttacks(Move.Bishop, index, square, destinySquares, false);
+										GenerateMovesFromAttacks(Piece.Bishop, index, square, destinySquares, false);
 									}
 									else
 									{
 										if ((square & board.queens) != 0)
 										{
 											// Queen
-											GenerateMovesFromAttacks(Move.Queen, index, square, destinySquares, false);
+											GenerateMovesFromAttacks(Piece.Queen, index, square, destinySquares, false);
 										}
 										else
 										{
 											if ((square & board.knights) != 0)
 											{
 												// Knight
-												GenerateMovesFromAttacks(Move.Knight, index, square, destinySquares, false);
+												GenerateMovesFromAttacks(Piece.Knight, index, square, destinySquares, false);
 											}
 										}
 									}
@@ -751,7 +748,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		{
 			while (attacks != 0)
 			{
-				long to = BitboardUtils.Lsb(attacks);
+				long to = turn ? BitboardUtils.Msb(attacks) : BitboardUtils.Lsb(attacks);
 				AddMove(pieceMoved, fromIndex, from, to, capture, 0);
 				attacks ^= to;
 			}
@@ -760,32 +757,37 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		private void GeneratePawnCapturesOrGoodPromos(int fromIndex, long from, long attacks
 			, long passant)
 		{
+			if ((ai.pinnedPieces & from) != 0)
+			{
+				attacks &= ai.pinnedMobility[fromIndex];
+			}
+			// Be careful with pawn advance moves, the pawn may be pinned
 			while (attacks != 0)
 			{
-				long to = BitboardUtils.Lsb(attacks);
+				long to = turn ? BitboardUtils.Msb(attacks) : BitboardUtils.Lsb(attacks);
 				if ((to & passant) != 0)
 				{
-					AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePassant);
+					AddMove(Piece.Pawn, fromIndex, from, to, true, Move.TypePassant);
 				}
 				else
 				{
 					bool capture = (to & others) != 0;
 					if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
 					{
-						AddMove(Move.Pawn, fromIndex, from, to, capture, Move.TypePromotionQueen);
+						AddMove(Piece.Pawn, fromIndex, from, to, capture, Move.TypePromotionQueen);
 						// If it is a capture, we must add the underpromotions
 						if (capture)
 						{
-							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionKnight);
-							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionRook);
-							AddMove(Move.Pawn, fromIndex, from, to, true, Move.TypePromotionBishop);
+							AddMove(Piece.Pawn, fromIndex, from, to, true, Move.TypePromotionKnight);
+							AddMove(Piece.Pawn, fromIndex, from, to, true, Move.TypePromotionRook);
+							AddMove(Piece.Pawn, fromIndex, from, to, true, Move.TypePromotionBishop);
 						}
 					}
 					else
 					{
 						if (capture)
 						{
-							AddMove(Move.Pawn, fromIndex, from, to, true, 0);
+							AddMove(Piece.Pawn, fromIndex, from, to, true, 0);
 						}
 					}
 				}
@@ -796,18 +798,23 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		private void GeneratePawnNonCapturesAndBadPromos(int fromIndex, long from, long attacks
 			)
 		{
+			if ((ai.pinnedPieces & from) != 0)
+			{
+				attacks &= ai.pinnedMobility[fromIndex];
+			}
+			// Be careful with pawn advance moves, the pawn may be pinned
 			while (attacks != 0)
 			{
-				long to = BitboardUtils.Lsb(attacks);
+				long to = turn ? BitboardUtils.Msb(attacks) : BitboardUtils.Lsb(attacks);
 				if ((to & (BitboardUtils.b_u | BitboardUtils.b_d)) != 0)
 				{
-					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionKnight);
-					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionRook);
-					AddMove(Move.Pawn, fromIndex, from, to, false, Move.TypePromotionBishop);
+					AddMove(Piece.Pawn, fromIndex, from, to, false, Move.TypePromotionKnight);
+					AddMove(Piece.Pawn, fromIndex, from, to, false, Move.TypePromotionRook);
+					AddMove(Piece.Pawn, fromIndex, from, to, false, Move.TypePromotionBishop);
 				}
 				else
 				{
-					AddMove(Move.Pawn, fromIndex, from, to, false, 0);
+					AddMove(Piece.Pawn, fromIndex, from, to, false, 0);
 				}
 				attacks ^= to;
 			}
@@ -840,17 +847,17 @@ namespace Com.Alonsoruibal.Chess.Movesort
 				allAfterMove = ((all ^ rookMoveMask) | kingTo) & ~from;
 				minesAfterMove = ((mines ^ rookMoveMask) | kingTo) & ~from;
 				// Direct check by rook
-				check |= (rookTo & attacksInfo.rookAttacksOtherking) != 0;
+				check |= (rookTo & ai.rookAttacksKing[them]) != 0;
 			}
 			else
 			{
-				if (pieceMoved == Move.King)
+				if (pieceMoved == Piece.King)
 				{
 					newMyKingIndex = toIndex;
 				}
 				else
 				{
-					newMyKingIndex = attacksInfo.myKingIndex;
+					newMyKingIndex = ai.kingIndex[us];
 				}
 				rookSlidersAfterMove = (board.rooks | board.queens) & ~from & ~to;
 				allAfterMove = (all | to) & ~from;
@@ -862,53 +869,50 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					allAfterMove &= ~squaresForDiscovery;
 				}
 				// Direct checks
-				if (pieceMoved == Move.Knight || moveType == Move.TypePromotionKnight)
+				if (pieceMoved == Piece.Knight || moveType == Move.TypePromotionKnight)
 				{
-					check = (to & bbAttacks.knight[attacksInfo.otherKingIndex]) != 0;
+					check = (to & bbAttacks.knight[ai.kingIndex[them]]) != 0;
 				}
 				else
 				{
-					if (pieceMoved == Move.Bishop || moveType == Move.TypePromotionBishop)
+					if (pieceMoved == Piece.Bishop || moveType == Move.TypePromotionBishop)
 					{
-						check = (to & attacksInfo.bishopAttacksOtherking) != 0;
+						check = (to & ai.bishopAttacksKing[them]) != 0;
 						bishopSlidersAfterMove |= to;
 					}
 					else
 					{
-						if (pieceMoved == Move.Rook || moveType == Move.TypePromotionRook)
+						if (pieceMoved == Piece.Rook || moveType == Move.TypePromotionRook)
 						{
-							check = (to & attacksInfo.rookAttacksOtherking) != 0;
+							check = (to & ai.rookAttacksKing[them]) != 0;
 							rookSlidersAfterMove |= to;
 						}
 						else
 						{
-							if (pieceMoved == Move.Queen || moveType == Move.TypePromotionQueen)
+							if (pieceMoved == Piece.Queen || moveType == Move.TypePromotionQueen)
 							{
-								check = (to & (attacksInfo.bishopAttacksOtherking | attacksInfo.rookAttacksOtherking
-									)) != 0;
+								check = (to & (ai.bishopAttacksKing[them] | ai.rookAttacksKing[them])) != 0;
 								bishopSlidersAfterMove |= to;
 								rookSlidersAfterMove |= to;
 							}
 							else
 							{
-								if (pieceMoved == Move.Pawn)
+								if (pieceMoved == Piece.Pawn)
 								{
-									check = (to & (turn ? bbAttacks.pawnDownwards[attacksInfo.otherKingIndex] : bbAttacks
-										.pawnUpwards[attacksInfo.otherKingIndex])) != 0;
+									check = (to & bbAttacks.pawn[them][ai.kingIndex[them]]) != 0;
 								}
 							}
 						}
 					}
 				}
 			}
-			// After a promotion to queen or rook there are new sliders transversing the origin square, so mayPin is not valid
-			if ((squaresForDiscovery & attacksInfo.mayPin) != 0 || moveType == Move.TypePromotionQueen
-				 || moveType == Move.TypePromotionRook || moveType == Move.TypePromotionBishop)
+			if ((squaresForDiscovery & ai.mayPin[them]) != 0 && (moveType == Move.TypePassant
+				 || ((ai.piecesGivingCheck & (board.rooks | board.bishops | board.queens)) != 0 
+				&& pieceMoved == Piece.King)))
 			{
 				// Candidates to leave the king in check after moving
-				if (((squaresForDiscovery & attacksInfo.bishopAttacksMyking) != 0) || ((attacksInfo
-					.piecesGivingCheck & (board.bishops | board.queens)) != 0 && pieceMoved == Move.
-					King))
+				if (((squaresForDiscovery & ai.bishopAttacksKing[us]) != 0) || ((ai.piecesGivingCheck
+					 & (board.bishops | board.queens)) != 0 && pieceMoved == Piece.King))
 				{
 					// Moving the king when the king is in check by a slider
 					// Regenerate bishop attacks to my king
@@ -919,8 +923,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					}
 				}
 				// Illegal move
-				if ((squaresForDiscovery & attacksInfo.rookAttacksMyking) != 0 || ((attacksInfo.piecesGivingCheck
-					 & (board.rooks | board.queens)) != 0 && pieceMoved == Move.King))
+				if ((squaresForDiscovery & ai.rookAttacksKing[us]) != 0 || ((ai.piecesGivingCheck
+					 & (board.rooks | board.queens)) != 0 && pieceMoved == Piece.King))
 				{
 					// Regenerate rook attacks to my king
 					long newRookAttacks = bbAttacks.GetRookAttacks(newMyKingIndex, allAfterMove);
@@ -929,23 +933,27 @@ namespace Com.Alonsoruibal.Chess.Movesort
 						return;
 					}
 				}
-				// Illegal move
+			}
+			// Illegal move
+			// After a promotion to queen or rook there are new sliders transversing the origin square, so mayPin is not valid
+			if (!check && ((squaresForDiscovery & ai.mayPin[us]) != 0 || moveType == Move.TypePromotionQueen
+				 || moveType == Move.TypePromotionRook || moveType == Move.TypePromotionBishop))
+			{
 				// Discovered checks
-				if (!check && (squaresForDiscovery & attacksInfo.bishopAttacksOtherking) != 0)
+				if ((squaresForDiscovery & ai.bishopAttacksKing[them]) != 0)
 				{
 					// Regenerate bishop attacks to the other king
-					long newBishopAttacks = bbAttacks.GetBishopAttacks(attacksInfo.otherKingIndex, allAfterMove
+					long newBishopAttacks = bbAttacks.GetBishopAttacks(ai.kingIndex[them], allAfterMove
 						);
 					if ((newBishopAttacks & bishopSlidersAfterMove & minesAfterMove) != 0)
 					{
 						check = true;
 					}
 				}
-				if (!check && (squaresForDiscovery & attacksInfo.rookAttacksOtherking) != 0)
+				if ((squaresForDiscovery & ai.rookAttacksKing[them]) != 0)
 				{
 					// Regenerate rook attacks to the other king
-					long newRookAttacks = bbAttacks.GetRookAttacks(attacksInfo.otherKingIndex, allAfterMove
-						);
+					long newRookAttacks = bbAttacks.GetRookAttacks(ai.kingIndex[them], allAfterMove);
 					if ((newRookAttacks & rookSlidersAfterMove & minesAfterMove) != 0)
 					{
 						check = true;
@@ -1003,8 +1011,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 				// If there aren't pieces attacking the destiny square
 				// and the piece cannot pin an attack to the see square,
 				// the see will be the captured piece value
-				if ((attacksInfo.attackedSquares[turn ? 1 : 0] & to) == 0 && (attacksInfo.mayPin 
-					& from) == 0)
+				if ((ai.attackedSquares[them] & to) == 0 && (ai.mayPin[them] & from) == 0)
 				{
 					see = capture ? Board.SeePieceValues[pieceCaptured] : 0;
 				}

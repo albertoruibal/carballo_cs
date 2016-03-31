@@ -279,6 +279,24 @@ namespace Com.Alonsoruibal.Chess.Search
 			lowerBound = score >= beta;
 		}
 
+		public virtual bool IsMate()
+		{
+			return (score < -SearchEngine.ValueIsMate) || (score > SearchEngine.ValueIsMate);
+		}
+
+		public virtual int GetMateIn()
+		{
+			int x = (score < 0 ? -Evaluator.Mate : Evaluator.Mate) - score;
+			if ((x & 1) != 0)
+			{
+				return (x >> 1) + 1;
+			}
+			else
+			{
+				return x >> 1;
+			}
+		}
+
 		/// <summary>
 		/// in UCI format
 		/// TODO complete
@@ -296,18 +314,10 @@ namespace Com.Alonsoruibal.Chess.Search
 				sb.Append(" seldepth ");
 				sb.Append(selDepth);
 			}
-			if ((score < -SearchEngine.ValueIsMate) || (score > SearchEngine.ValueIsMate))
+			if (IsMate())
 			{
 				sb.Append(" score mate ");
-				int x = (score < 0 ? -Evaluator.Victory : Evaluator.Victory) - score;
-				if ((x & 1) != 0)
-				{
-					sb.Append((x >> 1) + 1);
-				}
-				else
-				{
-					sb.Append(x >> 1);
-				}
+				sb.Append(GetMateIn());
 			}
 			else
 			{

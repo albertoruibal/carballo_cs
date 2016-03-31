@@ -17,9 +17,17 @@ namespace Com.Alonsoruibal.Chess.Search
 	{
 		private static readonly Logger logger = Logger.GetLogger("SearchEngine");
 
+		public bool debug = false;
+
 		public const int MaxDepth = 64;
 
-		public const int ValueIsMate = Evaluator.Victory - MaxDepth;
+		public const int ValueIsMate = Evaluator.Mate - MaxDepth;
+
+		private const int NodeRoot = 0;
+
+		private const int NodePv = 1;
+
+		private const int NodeNull = 2;
 
 		private const int Ply = 2;
 
@@ -32,13 +40,20 @@ namespace Com.Alonsoruibal.Chess.Search
 
 		private static readonly int[] IidDepth = new int[] { 5 * Ply, 5 * Ply, 8 * Ply };
 
-		public const int NodeRoot = 0;
+		private const int IidMargin = 300;
 
-		public const int NodePv = 1;
+		private const int SingularExtensionMargin = 50;
 
-		public const int NodeNull = 2;
+		private static readonly int[] AspirationWindowSizes = new int[] { 10, 25, 150, 400
+			, 550, 1025 };
 
-		public bool debug = false;
+		private const int FutilityMarginQs = 80;
+
+		private const int FutilityMargin = 100;
+
+		private const int FutilityMarginAggressive = 150;
+
+		private const int RazoringMargin = 325;
 
 		private SearchParameters searchParameters;
 
@@ -73,8 +88,6 @@ namespace Com.Alonsoruibal.Chess.Search
 		private int globalBestMove;
 
 		private int ponderMove;
-
-		private string pv;
 
 		private int initialPly;
 
@@ -148,6 +161,7 @@ namespace Com.Alonsoruibal.Chess.Search
 
 		public SearchEngine(Config config)
 		{
+			// By node type
 			// Think limits
 			// Initial Ply for search
 			// For performance benching
@@ -194,7 +208,6 @@ namespace Com.Alonsoruibal.Chess.Search
 			// Init our reduction lookup tables
 			for (int depthRemaining = 1; depthRemaining < 64; depthRemaining++)
 			{
-				// OnePly = 2
 				for (int moveNumber = 1; moveNumber < 64; moveNumber++)
 				{
 					double pvRed = 0.5 + Math.Log(depthRemaining) * Math.Log(moveNumber) / 6.0;
@@ -205,7 +218,6 @@ namespace Com.Alonsoruibal.Chess.Search
 						(nonPVRed * Ply) : 0);
 				}
 			}
-			// System.out.println(depthRemaining + " " + moveNumber + " " + pvReductionMatrix[depthRemaining][moveNumber] + " " + nonPvReductionMatrix[depthRemaining][moveNumber]);
 			Init();
 		}
 
@@ -227,13 +239,13 @@ namespace Com.Alonsoruibal.Chess.Search
 			{
 				if ("complete".Equals(evaluatorName))
 				{
-					evaluator = new CompleteEvaluator(config);
+					evaluator = new CompleteEvaluator();
 				}
 				else
 				{
 					if ("experimental".Equals(evaluatorName))
 					{
-						evaluator = new ExperimentalEvaluator(config);
+						evaluator = new ExperimentalEvaluator();
 					}
 				}
 			}
@@ -271,12 +283,14 @@ namespace Com.Alonsoruibal.Chess.Search
 		private int GetReduction(int nodeType, int depth, int movecount)
 		{
 			return nodeType == NodePv || nodeType == NodeRoot ? pvReductionMatrix[Math.Min(depth
-				 / Ply, 63)][Math.Min(movecount, 63)] : nonPvReductionMatrix[Math.Min(depth / Ply
-				, 63)][Math.Min(movecount, 63)];
+				 >> 1, 63)][Math.Min(movecount, 63)] : nonPvReductionMatrix[Math.Min(depth >> 1, 
+				63)][Math.Min(movecount, 63)];
 		}
 
 		//
+		/* Because PLY = 2 */
 		//
+		/* Because PLY = 2*/
 		public virtual void SetObserver(SearchObserver observer)
 		{
 			this.observer = observer;
@@ -319,47 +333,6 @@ namespace Com.Alonsoruibal.Chess.Search
 		{
 			return (board.GetMines() & (board.knights | board.bishops | board.rooks | board.queens
 				)) != 0;
-		}
-
-		/// <summary>
-		/// Calculates the extension of a move in the actual position
-		/// Now the move is not done
-		/// </summary>
-		private int Extensions(int move, bool mateThreat, int moveSee)
-		{
-			int ext = 0;
-			if (Move.IsCheck(move) && moveSee >= 0)
-			{
-				ext += config.GetExtensionsCheck();
-				if (ext >= Ply)
-				{
-					return Ply;
-				}
-			}
-			if (Move.GetPieceMoved(move) == Move.Pawn)
-			{
-				if (Move.IsPawnPush678(move))
-				{
-					ext += config.GetExtensionsPawnPush();
-				}
-				if (board.IsPassedPawn(Move.GetToIndex(move)))
-				{
-					ext += config.GetExtensionsPassedPawn();
-				}
-				if (ext >= Ply)
-				{
-					return Ply;
-				}
-			}
-			if (mateThreat)
-			{
-				ext += config.GetExtensionsMateThreat();
-				if (ext >= Ply)
-				{
-					return Ply;
-				}
-			}
-			return ext;
 		}
 
 		/// <summary>Returns true if we can use the value stored on the TT to return from search
@@ -467,8 +440,8 @@ namespace Com.Alonsoruibal.Chess.Search
 			int bestScore = alpha;
 			int bestMove = Move.None;
 			int staticEval = Evaluator.NoValue;
-			int eval = -Evaluator.Victory;
-			int futilityBase = -Evaluator.Victory;
+			int eval = -Evaluator.Mate;
+			int futilityBase = -Evaluator.Mate;
 			// Do not allow stand pat when in check
 			if (!board.GetCheck())
 			{
@@ -485,7 +458,7 @@ namespace Com.Alonsoruibal.Chess.Search
 					}
 					return bestScore;
 				}
-				futilityBase = eval + config.GetFutilityMarginQS();
+				futilityBase = eval + FutilityMarginQs;
 			}
 			// If we have more depths than possible...
 			if (distanceToInitialPly >= MaxDepth - 1)
@@ -502,18 +475,47 @@ namespace Com.Alonsoruibal.Chess.Search
 			{
 				validOperations = true;
 				// Futility pruning
-				if (config.GetFutility() && !moveIterator.checkEvasion && !Move.IsCheck(move) && 
-					!isPv && move != ttMove && !Move.IsPawnPush678(move) && futilityBase > -Evaluator
-					.KnownWin)
+				if (!moveIterator.checkEvasion && !Move.IsCheck(move) && !isPv && move != ttMove 
+					&& !Move.IsPawnPush678(move) && futilityBase > -Evaluator.KnownWin)
 				{
 					//
 					//
 					//
 					//
 					//
-					//
-					int futilityValue = futilityBase + ExperimentalEvaluator.PieceValues[Move.GetPieceCaptured
-						(board, move)];
+					int futilityValue = futilityBase;
+					switch (Move.GetPieceCaptured(board, move))
+					{
+						case Piece.Pawn:
+						{
+							futilityValue += Evaluator.Pawn;
+							break;
+						}
+
+						case Piece.Knight:
+						{
+							futilityValue += Evaluator.Knight;
+							break;
+						}
+
+						case Piece.Bishop:
+						{
+							futilityValue += Evaluator.Bishop;
+							break;
+						}
+
+						case Piece.Rook:
+						{
+							futilityValue += Evaluator.Rook;
+							break;
+						}
+
+						case Piece.Queen:
+						{
+							futilityValue += Evaluator.Queen;
+							break;
+						}
+					}
 					if (futilityValue < beta)
 					{
 						bestScore = Math.Max(bestScore, futilityValue);
@@ -604,13 +606,13 @@ namespace Com.Alonsoruibal.Chess.Search
 			}
 			bool mateThreat = false;
 			bool futilityPrune = false;
-			int futilityValue = -Evaluator.Victory;
-			int staticEval = -Evaluator.Victory;
-			int eval = -Evaluator.Victory;
+			int futilityValue = -Evaluator.Mate;
+			int staticEval = -Evaluator.Mate;
+			int eval = -Evaluator.Mate;
 			if (!board.GetCheck())
 			{
 				// Do a static eval, in case of exclusion and not found in the TT, search again with the normal key
-				bool evalTT = excludedMove == 0 || foundTT ? foundTT : tt.Search(board, distanceToInitialPly
+				bool evalTT = excludedMove == Move.None || foundTT ? foundTT : tt.Search(board, distanceToInitialPly
 					, false);
 				staticEval = Evaluate(evalTT, distanceToInitialPly);
 				eval = RefineEval(foundTT, staticEval);
@@ -624,12 +626,11 @@ namespace Com.Alonsoruibal.Chess.Search
 			if (!board.GetCheck())
 			{
 				// Hyatt's Razoring http://chessprogramming.wikispaces.com/Razoring
-				if (nodeType == NodeNull && config.GetRazoring() && ttMove == 0 && allowNullMove 
-					&& depthRemaining < RazorDepth && Math.Abs(beta) < ValueIsMate && eval + config.
-					GetRazoringMargin() < beta && (board.pawns & ((board.whites & BitboardUtils.b2_u
-					) | (board.blacks & BitboardUtils.b2_d))) == 0)
+				if (nodeType == NodeNull && ttMove == 0 && allowNullMove && depthRemaining < RazorDepth
+					 && Math.Abs(beta) < ValueIsMate && eval + RazoringMargin < beta && (board.pawns
+					 & ((board.whites & BitboardUtils.b2_u) | (board.blacks & BitboardUtils.b2_d))) 
+					== 0)
 				{
-					//
 					//
 					//
 					// Not when last was a null move
@@ -643,7 +644,7 @@ namespace Com.Alonsoruibal.Chess.Search
 						razoringHit++;
 						return QuiescentSearch(0, alpha, beta);
 					}
-					int rbeta = beta - config.GetRazoringMargin();
+					int rbeta = beta - RazoringMargin;
 					int v = QuiescentSearch(0, rbeta - 1, rbeta);
 					if (v < rbeta)
 					{
@@ -652,9 +653,9 @@ namespace Com.Alonsoruibal.Chess.Search
 					}
 				}
 				// Static null move pruning or futility pruning in parent node
-				if (nodeType == NodeNull && config.GetStaticNullMove() && allowNullMove && depthRemaining
-					 < RazorDepth && Math.Abs(beta) < ValueIsMate && Math.Abs(eval) < Evaluator.KnownWin
-					 && eval - config.GetFutilityMargin() >= beta && BoardAllowsNullMove())
+				if (nodeType == NodeNull && allowNullMove && depthRemaining < RazorDepth && Math.
+					Abs(beta) < ValueIsMate && Math.Abs(eval) < Evaluator.KnownWin && eval - FutilityMargin
+					 >= beta && BoardAllowsNullMove())
 				{
 					//
 					//
@@ -662,15 +663,12 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					//
 					//
-					//
-					return eval - config.GetFutilityMargin();
+					return eval - FutilityMargin;
 				}
 				// Null move pruning and mate threat detection
-				if (nodeType == NodeNull && config.GetNullMove() && allowNullMove && depthRemaining
-					 >= 2 * Ply && Math.Abs(beta) < ValueIsMate && eval >= beta && BoardAllowsNullMove
-					())
+				if (nodeType == NodeNull && allowNullMove && depthRemaining >= 2 * Ply && Math.Abs
+					(beta) < ValueIsMate && eval >= beta && BoardAllowsNullMove())
 				{
-					//
 					//
 					//
 					//
@@ -678,7 +676,7 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					nullMoveProbe++;
 					int R = 3 * Ply + ((int)(((uint)depthRemaining) >> 2));
-					board.DoMove(0, false, false);
+					board.DoMove(Move.Null, false, false);
 					score = depthRemaining - R < Ply ? -QuiescentSearch(0, -beta, -beta + 1) : -Search
 						(NodeNull, depthRemaining - R, -beta, -beta + 1, false, Move.None);
 					board.UndoMove();
@@ -709,29 +707,28 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 				// Internal Iterative Deepening (IID)
 				// Do a reduced move to search for a ttMove that will improve sorting
-				if (config.GetIid() && ttMove == 0 && depthRemaining >= IidDepth[nodeType] && allowNullMove
-					 && (nodeType != NodeNull || staticEval + config.GetIidMargin() > beta) && excludedMove
-					 == 0)
+				if (ttMove == Move.None && depthRemaining >= IidDepth[nodeType] && allowNullMove 
+					&& (nodeType != NodeNull || staticEval + IidMargin > beta) && excludedMove == Move
+					.None)
 				{
 					//
 					//
 					//
 					//
-					//
 					int d = (nodeType == NodePv ? depthRemaining - 2 * Ply : depthRemaining >> 1);
-					Search(nodeType, d, alpha, beta, false, 0);
+					Search(nodeType, d, alpha, beta, false, Move.None);
 					if (tt.Search(board, distanceToInitialPly, false))
 					{
 						ttMove = tt.GetBestMove();
 					}
 				}
 				// Futility pruning
-				if (nodeType == NodeNull && config.GetFutility())
+				if (nodeType == NodeNull)
 				{
 					if (depthRemaining <= Ply)
 					{
 						// at frontier nodes
-						futilityValue = staticEval + config.GetFutilityMargin();
+						futilityValue = staticEval + FutilityMargin;
 						if (futilityValue < beta)
 						{
 							futilityHit++;
@@ -743,7 +740,7 @@ namespace Com.Alonsoruibal.Chess.Search
 						if (depthRemaining <= 2 * Ply)
 						{
 							// at pre-frontier nodes
-							futilityValue = staticEval + config.GetFutilityMarginAggressive();
+							futilityValue = staticEval + FutilityMarginAggressive;
 							if (futilityValue < beta)
 							{
 								aggressiveFutilityHit++;
@@ -757,7 +754,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			moveIterator.GenMoves(ttMove);
 			int movesDone = 0;
 			bool validOperations = false;
-			int bestScore = -Evaluator.Victory;
+			int bestScore = -Evaluator.Mate;
 			int move;
 			int bestMove = Move.None;
 			while ((move = moveIterator.Next()) != Move.None)
@@ -767,13 +764,27 @@ namespace Com.Alonsoruibal.Chess.Search
 				{
 					continue;
 				}
-				int extension = Extensions(move, mateThreat, moveIterator.GetLastMoveSee());
+				//
+				// Calculates the extension of a move in the actual position
+				//
+				int extension = 0;
+				if (mateThreat)
+				{
+					extension = Ply;
+				}
+				else
+				{
+					if (Move.IsCheck(move) && moveIterator.GetLastMoveSee() >= 0)
+					{
+						extension = Ply;
+					}
+				}
 				// Check singular move extension
 				// It also detects singular replies
 				if (nodeType != NodeRoot && move == ttMove && extension < Ply && excludedMove == 
-					0 && config.GetExtensionsSingular() > 0 && depthRemaining >= SingularMoveDepth[nodeType
-					] && ttNodeType == TranspositionTable.TypeFailHigh && ttDepthAnalyzed >= depthRemaining
-					 - 3 * Ply && Math.Abs(ttScore) < Evaluator.KnownWin)
+					Move.None && depthRemaining >= SingularMoveDepth[nodeType] && ttNodeType == TranspositionTable
+					.TypeFailHigh && ttDepthAnalyzed >= depthRemaining - 3 * Ply && Math.Abs(ttScore
+					) < Evaluator.KnownWin)
 				{
 					//
 					//
@@ -782,19 +793,14 @@ namespace Com.Alonsoruibal.Chess.Search
 					//
 					//
 					//
-					//
 					singularExtensionProbe++;
-					int seBeta = ttScore - config.GetSingularExtensionMargin();
+					int seBeta = ttScore - SingularExtensionMargin;
 					int excScore = Search(nodeType, depthRemaining >> 1, seBeta - 1, seBeta, false, move
 						);
 					if (excScore < seBeta)
 					{
 						singularExtensionHit++;
-						extension += config.GetExtensionsSingular();
-						if (extension > Ply)
-						{
-							extension = Ply;
-						}
+						extension = Ply;
 					}
 				}
 				bool importantMove = nodeType == NodeRoot || extension != 0 || moveIterator.checkEvasion
@@ -807,6 +813,7 @@ namespace Com.Alonsoruibal.Chess.Search
 				//
 				// Include ALL captures
 				// Includes promotions
+				//
 				//
 				if (futilityPrune && bestScore > -Evaluator.KnownWin && !importantMove)
 				{
@@ -839,9 +846,8 @@ namespace Com.Alonsoruibal.Chess.Search
 					bool doFullSearch = true;
 					// Late move reductions (LMR)
 					int reduction = 0;
-					if (config.GetLmr() && depthRemaining >= LmrDepthsNotReduced && !importantMove)
+					if (depthRemaining >= LmrDepthsNotReduced && !importantMove)
 					{
-						//
 						//
 						reduction += GetReduction(nodeType, depthRemaining, movesDone);
 					}
@@ -870,10 +876,12 @@ namespace Com.Alonsoruibal.Chess.Search
 					}
 				}
 				board.UndoMove();
-				// It tracks the best move and it also insert errors on the root node
-				if (score > bestScore && (nodeType != NodeRoot || config.GetRand() == 0 || (random
-					.Next(100) > config.GetRand())))
+				// It tracks the best move and...
+				if (score > bestScore && (config.GetRand() == 0 || bestScore == -Evaluator.Mate ||
+					 random.Next(1000) > config.GetRand()))
 				{
+					//... insert errors to lower the ELO
+					// it makes sure that has at least one move
 					bestMove = move;
 					bestScore = score;
 					if (nodeType == NodeRoot)
@@ -894,19 +902,19 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 			}
 			// Checkmate or stalemate
-			if (excludedMove == 0 && !validOperations)
+			if (excludedMove == Move.None && !validOperations)
 			{
 				bestScore = EvaluateEndgame(distanceToInitialPly);
 			}
 			// Fix score for excluded moves
-			if (bestScore == -Evaluator.Victory)
+			if (bestScore == -Evaluator.Mate)
 			{
 				bestScore = ValueMatedIn(distanceToInitialPly);
 			}
 			// Tells MoveSorter the move score
 			if (bestScore >= beta)
 			{
-				if (excludedMove == 0 && validOperations)
+				if (excludedMove == Move.None && validOperations)
 				{
 					sortInfo.BetaCutoff(bestMove, distanceToInitialPly);
 				}
@@ -941,12 +949,11 @@ namespace Com.Alonsoruibal.Chess.Search
 		private void NotifyMoveFound(int move, int score, int alpha, int beta)
 		{
 			long time = Runtime.CurrentTimeMillis();
-			GetPv(move);
 			SearchStatusInfo info = new SearchStatusInfo();
 			info.SetDepth(depth);
 			info.SetSelDepth(selDepth);
 			info.SetTime(time - startTime);
-			info.SetPv(pv);
+			info.SetPv(GetPv(move));
 			info.SetScore(score, alpha, beta);
 			info.SetNodes(positionCounter + pvPositionCounter + qsPositionCounter);
 			info.SetHashFull(tt.GetHashFull());
@@ -977,7 +984,7 @@ namespace Com.Alonsoruibal.Chess.Search
 					PrepareRun();
 					Run();
 				}
-				catch (Exception)
+				catch (SearchFinishedException)
 				{
 				}
 			}
@@ -1056,7 +1063,6 @@ namespace Com.Alonsoruibal.Chess.Search
 			qsPositionCounter = 0;
 			globalBestMove = Move.None;
 			ponderMove = Move.None;
-			pv = null;
 			initialPly = board.GetMoveNumber();
 			if (config.GetUseBook() && config.GetBook() != null && board.IsUsingBook() && (config
 				.GetBookKnowledge() == 100 || ((random.NextDouble() * 100) < config.GetBookKnowledge
@@ -1077,9 +1083,17 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 			}
 			depth = 1;
-			rootScore = Evaluate(tt.Search(board, 0, false), 0);
+			bool foundTT = tt.Search(board, 0, false);
+			if (CanUseTT(0, -Evaluator.Mate, Evaluator.Mate))
+			{
+				rootScore = tt.GetScore();
+			}
+			else
+			{
+				rootScore = Evaluate(foundTT, 0);
+			}
 			tt.NewGeneration();
-			aspWindows = config.GetAspirationWindowSizes();
+			aspWindows = AspirationWindowSizes;
 		}
 
 		/// <exception cref="Com.Alonsoruibal.Chess.Search.SearchFinishedException"/>
@@ -1089,10 +1103,10 @@ namespace Com.Alonsoruibal.Chess.Search
 			int failHighCount = 0;
 			int failLowCount = 0;
 			int initialScore = rootScore;
-			int alpha = (initialScore - aspWindows[failLowCount] > -Evaluator.Victory ? initialScore
-				 - aspWindows[failLowCount] : -Evaluator.Victory);
-			int beta = (initialScore + aspWindows[failHighCount] < Evaluator.Victory ? initialScore
-				 + aspWindows[failHighCount] : Evaluator.Victory);
+			int alpha = (initialScore - aspWindows[failLowCount] > -Evaluator.Mate ? initialScore
+				 - aspWindows[failLowCount] : -Evaluator.Mate);
+			int beta = (initialScore + aspWindows[failHighCount] < Evaluator.Mate ? initialScore
+				 + aspWindows[failHighCount] : Evaluator.Mate);
 			int previousRootScore = rootScore;
 			long time1 = Runtime.CurrentTimeMillis();
 			// Iterate aspiration windows
@@ -1105,7 +1119,7 @@ namespace Com.Alonsoruibal.Chess.Search
 				{
 					failLowCount++;
 					alpha = (failLowCount < aspWindows.Length && (initialScore - aspWindows[failLowCount
-						] > -Evaluator.Victory) ? initialScore - aspWindows[failLowCount] : -Evaluator.Victory
+						] > -Evaluator.Mate) ? initialScore - aspWindows[failLowCount] : -Evaluator.Mate
 						 - 1);
 				}
 				else
@@ -1114,8 +1128,8 @@ namespace Com.Alonsoruibal.Chess.Search
 					{
 						failHighCount++;
 						beta = (failHighCount < aspWindows.Length && (initialScore + aspWindows[failHighCount
-							] < Evaluator.Victory) ? initialScore + aspWindows[failHighCount] : Evaluator.Victory
-							 + 1);
+							] < Evaluator.Mate) ? initialScore + aspWindows[failHighCount] : Evaluator.Mate 
+							+ 1);
 					}
 					else
 					{
@@ -1138,7 +1152,8 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 			}
 			if ((searchParameters.ManageTime() && (Math.Abs(rootScore) > ValueIsMate || (time2
-				 + ((time2 - time1) << 1)) > thinkToTime)) || depth == MaxDepth || depth > thinkToDepth)
+				 + ((time2 - time1) << 1)) > thinkToTime)) || depth == MaxDepth || depth >= thinkToDepth
+				 || Math.Abs(rootScore) == Evaluator.Mate)
 			{
 				// Under time restrictions and...
 				// Mate found or
@@ -1164,7 +1179,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			// Go back the board to the initial position
 			board.UndoMove(initialPly);
 			searching = false;
-			if (observer != null)
+			if (observer != null && globalBestMove != Move.None)
 			{
 				observer.BestMove(globalBestMove, ponderMove);
 			}
@@ -1190,19 +1205,24 @@ namespace Com.Alonsoruibal.Chess.Search
 		}
 
 		/// <summary>Gets the principal variation from the transposition table</summary>
-		private void GetPv(int firstMove)
+		private string GetPv(int firstMove)
 		{
+			if (firstMove == Move.None)
+			{
+				return string.Empty;
+			}
 			StringBuilder sb = new StringBuilder();
 			IList<long> keys = new AList<long>();
 			// To not repeat keys
 			sb.Append(Move.ToString(firstMove));
+			int savedMoveNumber = board.GetMoveNumber();
 			board.DoMove(firstMove, true, false);
 			int i = 1;
 			while (i < 256)
 			{
 				if (tt.Search(board, i, false))
 				{
-					if (tt.GetBestMove() == 0 || keys.Contains(board.GetKey()))
+					if (tt.GetBestMove() == Move.None || keys.Contains(board.GetKey()))
 					{
 						break;
 					}
@@ -1226,11 +1246,8 @@ namespace Com.Alonsoruibal.Chess.Search
 				}
 			}
 			// Now undo moves
-			for (int j = 0; j < i; j++)
-			{
-				board.UndoMove();
-			}
-			pv = sb.ToString();
+			board.UndoMove(savedMoveNumber);
+			return sb.ToString();
 		}
 
 		public virtual void Stop()
@@ -1262,12 +1279,12 @@ namespace Com.Alonsoruibal.Chess.Search
 
 		private int ValueMatedIn(int distanceToInitialPly)
 		{
-			return -Evaluator.Victory + distanceToInitialPly;
+			return -Evaluator.Mate + distanceToInitialPly;
 		}
 
 		private int ValueMateIn(int distanceToInitialPly)
 		{
-			return Evaluator.Victory - distanceToInitialPly;
+			return Evaluator.Mate - distanceToInitialPly;
 		}
 
 		public virtual TranspositionTable GetTT()

@@ -1,33 +1,24 @@
-﻿<Properties GitUserInfo="UsingGIT">
+﻿<Properties GitUserInfo="UsingGIT" StartupItem="Carballo.csproj">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Release|x86" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="com/alonsoruibal/chess/uci/Uci.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="com/alonsoruibal/chess/search/SearchEngine.cs">
     <Files>
-      <File FileName="com/alonsoruibal/chess/uci/Uci.cs" Line="40" Column="71" />
+      <File FileName="com/alonsoruibal/chess/evaluation/CompleteEvaluator.cs" Line="273" Column="15" />
+      <File FileName="com/alonsoruibal/chess/Board.cs" Line="16" Column="20" />
+      <File FileName="Sharpen/DataConverter.cs" Line="50" Column="2" />
+      <File FileName="com/alonsoruibal/chess/uci/Uci.cs" Line="142" Column="16" />
+      <File FileName="com/alonsoruibal/chess/evaluation/ExperimentalEvaluator.cs" Line="715" Column="1" />
+      <File FileName="com/alonsoruibal/chess/Color.cs" Line="1" Column="1" />
+      <File FileName="com/alonsoruibal/chess/Move.cs" Line="22" Column="20" />
+      <File FileName="com/alonsoruibal/chess/book/Book.cs" Line="1" Column="1" />
+      <File FileName="com/alonsoruibal/chess/hash/ZobristKey.cs" Line="1" Column="1" />
+      <File FileName="com/alonsoruibal/chess/Config.cs" Line="1" Column="1" />
+      <File FileName="com/alonsoruibal/chess/search/SearchEngine.cs" Line="1" Column="1" />
     </Files>
-    <Pads>
-      <Pad Id="ProjectPad">
-        <State expanded="True">
-          <Node name="Carballo" expanded="True">
-            <Node name="com" expanded="True">
-              <Node name="alonsoruibal" expanded="True">
-                <Node name="chess" expanded="True">
-                  <Node name="book" expanded="True" />
-                  <Node name="search" expanded="True" />
-                  <Node name="uci" expanded="True">
-                    <Node name="Uci.cs" selected="True" />
-                  </Node>
-                </Node>
-              </Node>
-            </Node>
-            <Node name="Sharpen" expanded="True" />
-            <Node name="Util" expanded="True" />
-          </Node>
-        </State>
-      </Pad>
-    </Pads>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
-    <BreakpointStore />
+    <BreakpointStore>
+      <Breakpoint file="/home/rui/workspace/carballo_cs/com/alonsoruibal/chess/Move.cs" line="82" column="1" />
+    </BreakpointStore>
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />
 </Properties>

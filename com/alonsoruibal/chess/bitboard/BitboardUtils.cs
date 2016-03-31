@@ -1,20 +1,12 @@
 using System;
 using System.Text;
+using Com.Alonsoruibal.Chess;
 using Sharpen;
 
 namespace Com.Alonsoruibal.Chess.Bitboard
 {
-	/// <author>rui</author>
 	public class BitboardUtils
 	{
-		public const long A8 = unchecked((long)(0x8000000000000000L));
-
-		public const long H1 = unchecked((long)(0x0000000000000001L));
-
-		public const long BlackSquares = unchecked((long)(0x55aa55aa55aa55aaL));
-
-		public const long WhiteSquares = unchecked((long)(0xaa55aa55aa55aa55L));
-
 		public const long b_d = unchecked((long)(0x00000000000000ffL));
 
 		public const long b_u = unchecked((long)(0xff00000000000000L));
@@ -31,46 +23,24 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public const long b2_l = unchecked((long)(0xC0C0C0C0C0C0C0C0L));
 
-		public const long b3_d = unchecked((long)(0x0000000000ffffffL));
+		public static readonly long[] File = new long[] { b_l, b_r << 6, b_r << 5, b_r <<
+			 4, b_r << 3, b_r << 2, b_r << 1, b_r };
 
-		public const long b3_u = unchecked((long)(0xffffff0000000000L));
+		public static readonly long[] FilesAdjacent = new long[] { File[1], File[0] | File
+			[2], File[1] | File[3], File[2] | File[4], File[3] | File[5], File[4] | File[6], 
+			File[5] | File[7], File[6] };
 
-		public const long r2_d = unchecked((long)(0x000000000000ff00L));
+		public static readonly long[] FilesLeft = new long[] { 0, File[0], File[0] | File
+			[1], File[0] | File[1] | File[2], File[0] | File[1] | File[2] | File[3], File[0]
+			 | File[1] | File[2] | File[3] | File[4], File[0] | File[1] | File[2] | File[3] 
+			| File[4] | File[5], File[0] | File[1] | File[2] | File[3] | File[4] | File[5] |
+			 File[6] };
 
-		public const long r2_u = unchecked((long)(0x00ff000000000000L));
-
-		public const long r3_d = unchecked((long)(0x0000000000ff0000L));
-
-		public const long r3_u = unchecked((long)(0x0000ff0000000000L));
-
-		public const long c4 = unchecked((long)(0x0000001818000000L));
-
-		public const long c16 = unchecked((long)(0x00003C3C3C3C0000L));
-
-		public const long c36 = unchecked((long)(0x007E7E7E7E7E7E00L));
-
-		public const long r4 = unchecked((long)(0xC3C300000000C3C3L));
-
-		public const long r9 = unchecked((long)(0xE7E7E70000E7E7E7L));
-
-		public static readonly long[] Column = new long[] { b_l, b_r << 6, b_r << 5, b_r 
-			<< 4, b_r << 3, b_r << 2, b_r << 1, b_r };
-
-		public static readonly long[] ColumnsAdjacents = new long[] { Column[1], Column[0
-			] | Column[2], Column[1] | Column[3], Column[2] | Column[4], Column[3] | Column[
-			5], Column[4] | Column[6], Column[5] | Column[7], Column[6] };
-
-		public static readonly long[] RowsLeft = new long[] { 0, Column[0], Column[0] | Column
-			[1], Column[0] | Column[1] | Column[2], Column[0] | Column[1] | Column[2] | Column
-			[3], Column[0] | Column[1] | Column[2] | Column[3] | Column[4], Column[0] | Column
-			[1] | Column[2] | Column[3] | Column[4] | Column[5], Column[0] | Column[1] | Column
-			[2] | Column[3] | Column[4] | Column[5] | Column[6] };
-
-		public static readonly long[] RowsRight = new long[] { Column[1] | Column[2] | Column
-			[3] | Column[4] | Column[5] | Column[6] | Column[7], Column[2] | Column[3] | Column
-			[4] | Column[5] | Column[6] | Column[7], Column[3] | Column[4] | Column[5] | Column
-			[6] | Column[7], Column[4] | Column[5] | Column[6] | Column[7], Column[5] | Column
-			[6] | Column[7], Column[6] | Column[7], Column[7], 0 };
+		public static readonly long[] FilesRight = new long[] { File[1] | File[2] | File[
+			3] | File[4] | File[5] | File[6] | File[7], File[2] | File[3] | File[4] | File[5
+			] | File[6] | File[7], File[3] | File[4] | File[5] | File[6] | File[7], File[4] 
+			| File[5] | File[6] | File[7], File[5] | File[6] | File[7], File[6] | File[7], File
+			[7], 0 };
 
 		public static readonly long[] Rank = new long[] { b_d, b_d << 8, b_d << 16, b_d <<
 			 24, b_d << 32, b_d << 40, b_d << 48, b_d << 56 };
@@ -132,18 +102,6 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		// up
 		// right
 		// left
-		// down
-		// up
-		// rank 2 down
-		// up
-		// rank 3 down
-		// up
-		// Board centers (for evaluation)
-		// center (4 squares)
-		// center (16 squares)
-		// center (36 squares)
-		// corners (4 squares)
-		// corners (9 squares)
 		// 0 is a, 7 is g
 		//
 		//
@@ -209,7 +167,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		//
 		//
 		//
-		// Ranks fordward in pawn direction
+		// Ranks forward in pawn direction W, B
 		//
 		//
 		//
@@ -228,9 +186,9 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		}
 
 		/// <summary>And viceversa</summary>
-		public static long Index2Square(byte index)
+		public static long Index2Square(int index)
 		{
-			return H1 << index;
+			return Square.H1 << index;
 		}
 
 		/// <summary>
@@ -257,11 +215,11 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			return @out;
 		}
 
-		/// <summary>prints a BitBoard to standard output</summary>
+		/// <summary>Prints a BitBoard to standard output</summary>
 		public static string ToString(long b)
 		{
 			StringBuilder sb = new StringBuilder();
-			long i = A8;
+			long i = Square.A8;
 			while (i != 0)
 			{
 				sb.Append(((b & i) != 0 ? "1 " : "0 "));
@@ -354,7 +312,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public static long Algebraic2Square(string name)
 		{
-			long aux = H1;
+			long aux = Square.H1;
 			for (int i = 0; i < 64; i++)
 			{
 				if (name.Equals(SquareNames[i]))
@@ -366,16 +324,16 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			return 0;
 		}
 
-		/// <summary>gets the column (0..7) of the square</summary>
+		/// <summary>Gets the file (0..7) for (a..h) of the square</summary>
 		/// <param name="square"/>
 		/// <returns/>
-		public static int GetColumn(long square)
+		public static int GetFile(long square)
 		{
-			for (int column = 0; column < 8; column++)
+			for (int file = 0; file < 8; file++)
 			{
-				if ((Column[column] & square) != 0)
+				if ((File[file] & square) != 0)
 				{
-					return column;
+					return file;
 				}
 			}
 			return 0;
@@ -405,7 +363,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			return 0;
 		}
 
-		public static int GetColumnOfIndex(int index)
+		public static int GetFileOfIndex(int index)
 		{
 			return 7 - index & 7;
 		}
@@ -450,12 +408,17 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public static bool IsWhite(long square)
 		{
-			return (square & WhiteSquares) != 0;
+			return (square & Square.Whites) != 0;
 		}
 
 		public static bool IsBlack(long square)
 		{
-			return (square & BlackSquares) != 0;
+			return (square & Square.Blacks) != 0;
+		}
+
+		public static long GetSameColorSquares(long square)
+		{
+			return (square & Square.Whites) != 0 ? Square.Whites : Square.Blacks;
 		}
 	}
 }

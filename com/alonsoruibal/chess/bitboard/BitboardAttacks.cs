@@ -17,9 +17,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 
 		public long[] king;
 
-		public long[] pawnDownwards;
-
-		public long[] pawnUpwards;
+		public long[][] pawn;
 
 		/// <summary>
 		/// If disabled, does not use Magic Bitboards, improves loading speed in GWT
@@ -89,8 +87,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			bishop = new long[64];
 			knight = new long[64];
 			king = new long[64];
-			pawnDownwards = new long[64];
-			pawnUpwards = new long[64];
+			pawn = new long[][] { new long[64], new long[64] };
 			long square = 1;
 			byte i = 0;
 			while (square != 0)
@@ -122,10 +119,10 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 				//
 				//
 				//
-				pawnUpwards[i] = SquareAttackedAux(square, 7, BitboardUtils.b_u | BitboardUtils.b_r
-					) | SquareAttackedAux(square, 9, BitboardUtils.b_u | BitboardUtils.b_l);
+				pawn[Color.W][i] = SquareAttackedAux(square, 7, BitboardUtils.b_u | BitboardUtils
+					.b_r) | SquareAttackedAux(square, 9, BitboardUtils.b_u | BitboardUtils.b_l);
 				//
-				pawnDownwards[i] = SquareAttackedAux(square, -7, BitboardUtils.b_d | BitboardUtils
+				pawn[Color.B][i] = SquareAttackedAux(square, -7, BitboardUtils.b_d | BitboardUtils
 					.b_l) | SquareAttackedAux(square, -9, BitboardUtils.b_d | BitboardUtils.b_r);
 				//
 				king[i] = SquareAttackedAux(square, +8, BitboardUtils.b_u) | SquareAttackedAux(square
@@ -178,8 +175,7 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 			}
 			long others = (white ? board.blacks : board.whites);
 			long all = board.GetAll();
-			if (((white ? pawnUpwards[index] : pawnDownwards[index]) & board.pawns & others) 
-				!= 0)
+			if ((pawn[white ? Color.W : Color.B][index] & board.pawns & others) != 0)
 			{
 				return true;
 			}
@@ -222,9 +218,9 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 				return 0;
 			}
 			long all = board.GetAll();
-			return ((board.blacks & pawnUpwards[index] | board.whites & pawnDownwards[index])
-				 & board.pawns) | (king[index] & board.kings) | (knight[index] & board.knights) 
-				| (GetRookAttacks(index, all) & (board.rooks | board.queens)) | (GetBishopAttacks
+			return ((board.blacks & pawn[Color.W][index] | board.whites & pawn[Color.B][index
+				]) & board.pawns) | (king[index] & board.kings) | (knight[index] & board.knights
+				) | (GetRookAttacks(index, all) & (board.rooks | board.queens)) | (GetBishopAttacks
 				(index, all) & (board.bishops | board.queens));
 		}
 
@@ -241,14 +237,12 @@ namespace Com.Alonsoruibal.Chess.Bitboard
 		/// <summary>without magic bitboards, too expensive, but uses less memory</summary>
 		public virtual long GetRookAttacks(int index, long all)
 		{
-			return GetRookShiftAttacks(BitboardUtils.Index2Square(unchecked((byte)index)), all
-				);
+			return GetRookShiftAttacks(BitboardUtils.Index2Square(index), all);
 		}
 
 		public virtual long GetBishopAttacks(int index, long all)
 		{
-			return GetBishopShiftAttacks(BitboardUtils.Index2Square(unchecked((byte)index)), 
-				all);
+			return GetBishopShiftAttacks(BitboardUtils.Index2Square(index), all);
 		}
 
 		public virtual long GetRookShiftAttacks(long square, long all)

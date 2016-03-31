@@ -40,7 +40,7 @@ namespace Com.Alonsoruibal.Chess.Search
 		// Analize x plyes only
 		// Search only this number of nodes
 		// Search for mate in mate moves
-		// Search movetime seconds
+		// Search movetime milliseconds
 		// Think infinite
 		public virtual bool IsPonder()
 		{
@@ -182,13 +182,15 @@ namespace Com.Alonsoruibal.Chess.Search
 			int timeInc = engineIsWhite ? winc : binc;
 			if (timeAvailable > 0)
 			{
-				calcTime = timeAvailable / 40 + ((int)(((uint)timeInc) >> 1));
+				calcTime = timeAvailable / 30 + timeInc;
 			}
 			if (panicTime)
 			{
+				// x 4
 				calcTime = calcTime << 2;
 			}
-			calcTime = Math.Min(calcTime, (int)(((uint)timeAvailable) >> 4));
+			calcTime = Math.Min(calcTime, (int)(((uint)timeAvailable) >> 3));
+			// Never consume more than time / 8
 			logger.Debug("Thinking for " + calcTime + "Ms");
 			return startTime + calcTime;
 		}

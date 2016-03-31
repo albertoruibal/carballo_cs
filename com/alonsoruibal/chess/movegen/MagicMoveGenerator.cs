@@ -45,15 +45,15 @@ namespace Com.Alonsoruibal.Chess.Movegen
 					if ((square & board.rooks) != 0)
 					{
 						// Rook
-						GenerateMovesFromAttacks(Move.Rook, index, bbAttacks.GetRookAttacks(index, all) &
-							 ~mines);
+						GenerateMovesFromAttacks(Piece.Rook, index, bbAttacks.GetRookAttacks(index, all) 
+							& ~mines);
 					}
 					else
 					{
 						if ((square & board.bishops) != 0)
 						{
 							// Bishop
-							GenerateMovesFromAttacks(Move.Bishop, index, bbAttacks.GetBishopAttacks(index, all
+							GenerateMovesFromAttacks(Piece.Bishop, index, bbAttacks.GetBishopAttacks(index, all
 								) & ~mines);
 						}
 						else
@@ -61,22 +61,22 @@ namespace Com.Alonsoruibal.Chess.Movegen
 							if ((square & board.queens) != 0)
 							{
 								// Queen
-								GenerateMovesFromAttacks(Move.Queen, index, (bbAttacks.GetRookAttacks(index, all)
-									 | bbAttacks.GetBishopAttacks(index, all)) & ~mines);
+								GenerateMovesFromAttacks(Piece.Queen, index, (bbAttacks.GetRookAttacks(index, all
+									) | bbAttacks.GetBishopAttacks(index, all)) & ~mines);
 							}
 							else
 							{
 								if ((square & board.kings) != 0)
 								{
 									// King
-									GenerateMovesFromAttacks(Move.King, index, bbAttacks.king[index] & ~mines);
+									GenerateMovesFromAttacks(Piece.King, index, bbAttacks.king[index] & ~mines);
 								}
 								else
 								{
 									if ((square & board.knights) != 0)
 									{
 										// Knight
-										GenerateMovesFromAttacks(Move.Knight, index, bbAttacks.knight[index] & ~mines);
+										GenerateMovesFromAttacks(Piece.Knight, index, bbAttacks.knight[index] & ~mines);
 									}
 									else
 									{
@@ -87,29 +87,29 @@ namespace Com.Alonsoruibal.Chess.Movegen
 											{
 												if (((square << 8) & all) == 0)
 												{
-													AddMoves(Move.Pawn, index, index + 8, false, 0);
+													AddMoves(Piece.Pawn, index, index + 8, false, 0);
 													// Two squares if it is in he first row	
 													if (((square & BitboardUtils.b2_d) != 0) && (((square << 16) & all) == 0))
 													{
-														AddMoves(Move.Pawn, index, index + 16, false, 0);
+														AddMoves(Piece.Pawn, index, index + 16, false, 0);
 													}
 												}
-												GeneratePawnCapturesFromAttacks(index, bbAttacks.pawnUpwards[index], board.GetPassantSquare
+												GeneratePawnCapturesFromAttacks(index, bbAttacks.pawn[Color.W][index], board.GetPassantSquare
 													());
 											}
 											else
 											{
 												if ((((long)(((ulong)square) >> 8)) & all) == 0)
 												{
-													AddMoves(Move.Pawn, index, index - 8, false, 0);
+													AddMoves(Piece.Pawn, index, index - 8, false, 0);
 													// Two squares if it is in he first row	
 													if (((square & BitboardUtils.b2_u) != 0) && ((((long)(((ulong)square) >> 16)) & all
 														) == 0))
 													{
-														AddMoves(Move.Pawn, index, index - 16, false, 0);
+														AddMoves(Piece.Pawn, index, index - 16, false, 0);
 													}
 												}
-												GeneratePawnCapturesFromAttacks(index, bbAttacks.pawnDownwards[index], board.GetPassantSquare
+												GeneratePawnCapturesFromAttacks(index, bbAttacks.pawn[Color.B][index], board.GetPassantSquare
 													());
 											}
 										}
@@ -138,7 +138,7 @@ namespace Com.Alonsoruibal.Chess.Movegen
 						.AreSquaresAttacked(board, kingRoute, board.GetTurn()))
 					{
 						//
-						AddMoves(Move.King, BitboardUtils.Square2Index(kingOrigin), BitboardUtils.Square2Index
+						AddMoves(Piece.King, BitboardUtils.Square2Index(kingOrigin), BitboardUtils.Square2Index
 							(board.chess960 ? rookOrigin : kingDestiny), false, Move.TypeKingsideCastling);
 					}
 				}
@@ -155,7 +155,7 @@ namespace Com.Alonsoruibal.Chess.Movegen
 						.AreSquaresAttacked(board, kingRoute, board.GetTurn()))
 					{
 						//
-						AddMoves(Move.King, BitboardUtils.Square2Index(kingOrigin), BitboardUtils.Square2Index
+						AddMoves(Piece.King, BitboardUtils.Square2Index(kingOrigin), BitboardUtils.Square2Index
 							(board.chess960 ? rookOrigin : kingDestiny), false, Move.TypeQueensideCastling);
 					}
 				}
@@ -184,13 +184,13 @@ namespace Com.Alonsoruibal.Chess.Movegen
 				long to = BitboardUtils.Lsb(attacks);
 				if ((to & others) != 0)
 				{
-					AddMoves(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), true, 0);
+					AddMoves(Piece.Pawn, fromIndex, BitboardUtils.Square2Index(to), true, 0);
 				}
 				else
 				{
 					if ((to & passant) != 0)
 					{
-						AddMoves(Move.Pawn, fromIndex, BitboardUtils.Square2Index(to), true, Move.TypePassant
+						AddMoves(Piece.Pawn, fromIndex, BitboardUtils.Square2Index(to), true, Move.TypePassant
 							);
 					}
 				}
@@ -202,7 +202,7 @@ namespace Com.Alonsoruibal.Chess.Movegen
 		private void AddMoves(int pieceMoved, int fromIndex, int toIndex, bool capture, int
 			 moveType)
 		{
-			if (pieceMoved == Move.Pawn && (toIndex < 8 || toIndex >= 56))
+			if (pieceMoved == Piece.Pawn && (toIndex < 8 || toIndex >= 56))
 			{
 				moves[moveIndex++] = Move.GenMove(fromIndex, toIndex, pieceMoved, capture, Move.TypePromotionQueen
 					);

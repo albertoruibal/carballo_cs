@@ -412,7 +412,7 @@ namespace Com.Alonsoruibal.Chess.Hash
 
 		public const long blackQueenSideCastling = unchecked((long)(0x1ef6e6dbb1961ec9L));
 
-		public static readonly long[] passantColumn = new long[] { unchecked((long)(0x70cc73d90bc26e24L
+		public static readonly long[] passantFile = new long[] { unchecked((long)(0x70cc73d90bc26e24L
 			)), unchecked((long)(0xe21a6b35df0c3ad7L)), unchecked((long)(0x3a93d8b2806962L))
 			, unchecked((long)(0x1c99ded33cb890a1L)), unchecked((long)(0xcf3145de0add4289L))
 			, unchecked((long)(0xd0e4427a5514fb72L)), unchecked((long)(0x77c621cc9fb3a483L))
@@ -494,7 +494,7 @@ namespace Com.Alonsoruibal.Chess.Hash
 		public static long[] GetKey(Board board)
 		{
 			long[] key = new long[] { 0, 0 };
-			long square = BitboardUtils.H1;
+			long square = Square.H1;
 			byte index = 0;
 			int color;
 			while (square != 0)
@@ -529,7 +529,7 @@ namespace Com.Alonsoruibal.Chess.Hash
 			{
 				color = board.GetTurn() ? 0 : 1;
 				// TODO test
-				key[1 - color] ^= passantColumn[BitboardUtils.GetColumn(passant)];
+				key[1 - color] ^= passantFile[BitboardUtils.GetFile(passant)];
 			}
 			if (board.GetTurn())
 			{

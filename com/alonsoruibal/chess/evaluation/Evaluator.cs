@@ -1,23 +1,47 @@
 using Com.Alonsoruibal.Chess;
 using Com.Alonsoruibal.Chess.Bitboard;
+using Com.Alonsoruibal.Chess.Util;
 using Sharpen;
 
 namespace Com.Alonsoruibal.Chess.Evaluation
 {
 	public abstract class Evaluator
 	{
+		public const int W = Color.W;
+
+		public const int B = Color.B;
+
 		public const int NoValue = short.MaxValue;
 
-		public const int Victory = 30000;
+		public const int Mate = 30000;
 
 		public const int KnownWin = 20000;
 
 		public const int Draw = 0;
 
+		public const int Pawn = 100;
+
+		public const int Knight = 325;
+
+		public const int Bishop = 325;
+
+		public const int Rook = 500;
+
+		public const int Queen = 975;
+
+		public static readonly int BishopPair = Com.Alonsoruibal.Chess.Evaluation.Evaluator
+			.Oe(50, 50);
+
+		public const int NonPawnMaterialEndgameMin = Queen + Rook;
+
+		public const int NonPawnMaterialMidgameMax = 2 * Knight + 2 * Bishop + 4 * Rook +
+			 2 * Queen;
+
 		public BitboardAttacks bbAttacks;
 
 		public Evaluator()
 		{
+			// Bonus by having two bishops in different colors
 			bbAttacks = BitboardAttacks.GetInstance();
 		}
 
@@ -27,25 +51,33 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 		/// <summary>Merges two short Opening - Ending values in one int</summary>
 		public static int Oe(int opening, int endgame)
 		{
-			return (opening << 16) | (endgame & unchecked((int)(0xffff)));
+			return ((opening < 0 ? opening - 1 : opening) << 16) | (endgame & unchecked((int)
+				(0xffff)));
 		}
 
-		/// <summary>Multiply with negative numbers (in the factor or in one of the oe components) cannot be done directly
-		/// 	</summary>
-		public static int OeMul(int factor, int oeValue)
-		{
-			return (((oeValue >> 16) * factor) << 16) | ((oeValue & unchecked((int)(0xffff)))
-				 * factor) & unchecked((int)(0xffff));
-		}
-
+		/// <summary>Get the "Opening" part</summary>
 		public static int O(int oe)
 		{
-			return oe >> 16;
+			int i = oe >> 16;
+			return i < 0 ? i + 1 : i;
 		}
 
+		/// <summary>Get the "Endgame" part</summary>
 		public static int E(int oe)
 		{
 			return (short)(oe & unchecked((int)(0xffff)));
+		}
+
+		/// <summary>Shift right each part by factor positions</summary>
+		public static int OeShr(int factor, int oeValue)
+		{
+			return Oe(O(oeValue) >> factor, E(oeValue) >> factor);
+		}
+
+		internal virtual string FormatOE(int value)
+		{
+			return StringUtils.PadLeft(O(value).ToString(), 8) + " " + StringUtils.PadLeft(E(
+				value).ToString(), 8);
 		}
 	}
 }

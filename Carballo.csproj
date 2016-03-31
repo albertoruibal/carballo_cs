@@ -3,12 +3,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProductVersion>10.0.0</ProductVersion>
+    <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{287D697A-ECDC-4804-9C5C-93970B38C3FE}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Carballo</RootNamespace>
     <AssemblyName>Carballo</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugType>full</DebugType>
@@ -21,6 +22,7 @@
     <ConsolePause>false</ConsolePause>
     <additionalargs>-unsafe</additionalargs>
     <DebugSymbols>true</DebugSymbols>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>none</DebugType>
@@ -31,6 +33,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <ConsolePause>false</ConsolePause>
     <additionalargs>-unsafe</additionalargs>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -103,14 +106,11 @@
     <Compile Include="com\alonsoruibal\chess\Board.cs" />
     <Compile Include="com\alonsoruibal\chess\Config.cs" />
     <Compile Include="com\alonsoruibal\chess\Move.cs" />
-    <Compile Include="com\alonsoruibal\chess\Pgn.cs" />
-    <Compile Include="com\alonsoruibal\chess\PgnFile.cs" />
     <Compile Include="com\alonsoruibal\chess\bitboard\BitboardAttacks.cs" />
     <Compile Include="com\alonsoruibal\chess\bitboard\BitboardAttacksMagic.cs" />
     <Compile Include="com\alonsoruibal\chess\bitboard\BitboardUtils.cs" />
     <Compile Include="com\alonsoruibal\chess\book\Book.cs" />
     <Compile Include="com\alonsoruibal\chess\evaluation\CompleteEvaluator.cs" />
-    <Compile Include="com\alonsoruibal\chess\evaluation\EndgameEvaluator.cs" />
     <Compile Include="com\alonsoruibal\chess\evaluation\Evaluator.cs" />
     <Compile Include="com\alonsoruibal\chess\evaluation\ExperimentalEvaluator.cs" />
     <Compile Include="com\alonsoruibal\chess\evaluation\KPKBitbase.cs" />
@@ -135,6 +135,10 @@
     <Compile Include="com\alonsoruibal\chess\book\ResourceBook.cs" />
     <Compile Include="com\alonsoruibal\chess\bitboard\AttacksInfo.cs" />
     <Compile Include="com\alonsoruibal\chess\util\StringUtils.cs" />
+    <Compile Include="com\alonsoruibal\chess\Color.cs" />
+    <Compile Include="com\alonsoruibal\chess\Piece.cs" />
+    <Compile Include="com\alonsoruibal\chess\Square.cs" />
+    <Compile Include="com\alonsoruibal\chess\evaluation\Endgame.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.SharpZipLib" />

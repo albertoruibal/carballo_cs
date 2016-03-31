@@ -13,9 +13,10 @@ cp -a ../carballo/jse/src/main/java/com tmp/
 #
 # Avoid more than one main() in the code
 rm ./tmp/com/alonsoruibal/chess/evaluation/KPKBitbaseGenerator.java
-rm ./tmp/com/alonsoruibal/chess/evaluation/ExperimentalPcsqGenerator.java
-rm ./tmp/com/alonsoruibal/chess/evaluation/CompletePcsqGenerator.java
+rm ./tmp/com/alonsoruibal/chess/evaluation/PcsqGenerator.java
 rm ./tmp/com/alonsoruibal/chess/bitboard/MagicNumbersGenerator.java
+rm ./tmp/com/alonsoruibal/chess/Pgn.java
+rm ./tmp/com/alonsoruibal/chess/PgnFile.java
 # These classes are converted manually
 rm ./tmp/com/alonsoruibal/chess/book/FileBook.java
 rm ./tmp/com/alonsoruibal/chess/uci/Uci.java

@@ -2155,7 +2155,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			, int pawnIndex)
 		{
 			return whiteKingIndex + (blackKingIndex << 6) + ((whitetoMove ? 1 : 0) << 12) + (
-				BitboardUtils.GetColumnOfIndex(pawnIndex) << 13) + ((Rank7 - BitboardUtils.GetRankOfIndex
+				BitboardUtils.GetFileOfIndex(pawnIndex) << 13) + ((Rank7 - BitboardUtils.GetRankOfIndex
 				(pawnIndex)) << 15);
 		}
 
@@ -2184,7 +2184,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 				pawnIndex = 63 - pawnIndex;
 				whiteToMove = !whiteToMove;
 			}
-			if (BitboardUtils.GetColumnOfIndex(pawnIndex) > 3)
+			if (BitboardUtils.GetFileOfIndex(pawnIndex) > 3)
 			{
 				// flip horizontal
 				whiteKingIndex = BitboardUtils.FlipHorizontalIndex(whiteKingIndex);

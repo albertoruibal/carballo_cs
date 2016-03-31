@@ -21,17 +21,11 @@ namespace Com.Alonsoruibal.Chess
 	{
 		public const int None = 0;
 
-		public const int Pawn = 1;
+		public const int Null = -1;
 
-		public const int Knight = 2;
+		public const string NoneString = "none";
 
-		public const int Bishop = 3;
-
-		public const int Rook = 4;
-
-		public const int Queen = 5;
-
-		public const int King = 6;
+		public const string NullString = "null";
 
 		public const string PieceLettersLowercase = " pnbrqk";
 
@@ -56,7 +50,6 @@ namespace Com.Alonsoruibal.Chess
 		public const int CaptureMask = unchecked((int)(0x1)) << 15;
 
 		// Predefined moves
-		// Move pieces ordered by value
 		// Move Types
 		// Promotions must be always >= TYPE_PROMOTION_QUEEN
 		public static int GenMove(int fromIndex, int toIndex, int pieceMoved, bool capture
@@ -103,36 +96,36 @@ namespace Com.Alonsoruibal.Chess
 		{
 			if (GetMoveType(move) == TypePassant)
 			{
-				return Pawn;
+				return Piece.Pawn;
 			}
 			long toSquare = GetToSquare(move);
 			if ((toSquare & board.pawns) != 0)
 			{
-				return Move.Pawn;
+				return Piece.Pawn;
 			}
 			else
 			{
 				if ((toSquare & board.knights) != 0)
 				{
-					return Move.Knight;
+					return Piece.Knight;
 				}
 				else
 				{
 					if ((toSquare & board.bishops) != 0)
 					{
-						return Move.Bishop;
+						return Piece.Bishop;
 					}
 					else
 					{
 						if ((toSquare & board.rooks) != 0)
 						{
-							return Move.Rook;
+							return Piece.Rook;
 						}
 						else
 						{
 							if ((toSquare & board.queens) != 0)
 							{
-								return Move.Queen;
+								return Piece.Queen;
 							}
 						}
 					}
@@ -159,22 +152,22 @@ namespace Com.Alonsoruibal.Chess
 		// Pawn push to 7 or 8th rank
 		public static bool IsPawnPush(int move)
 		{
-			return Move.GetPieceMoved(move) == Pawn && (Move.GetToIndex(move) < 16 || Move.GetToIndex
-				(move) > 47);
+			return Move.GetPieceMoved(move) == Piece.Pawn && (Move.GetToIndex(move) < 16 || Move
+				.GetToIndex(move) > 47);
 		}
 
 		// Pawn push to 6, 7 or 8th rank
 		public static bool IsPawnPush678(int move)
 		{
-			return Move.GetPieceMoved(move) == Pawn && (Move.GetFromIndex(move) < Move.GetToIndex
-				(move) ? Move.GetToIndex(move) >= 40 : Move.GetToIndex(move) < 24);
+			return Move.GetPieceMoved(move) == Piece.Pawn && (Move.GetFromIndex(move) < Move.
+				GetToIndex(move) ? Move.GetToIndex(move) >= 40 : Move.GetToIndex(move) < 24);
 		}
 
 		// Pawn push to 5, 6, 7 or 8th rank
 		public static bool IsPawnPush5678(int move)
 		{
-			return Move.GetPieceMoved(move) == Pawn && (Move.GetFromIndex(move) < Move.GetToIndex
-				(move) ? Move.GetToIndex(move) >= 32 : Move.GetToIndex(move) < 32);
+			return Move.GetPieceMoved(move) == Piece.Pawn && (Move.GetFromIndex(move) < Move.
+				GetToIndex(move) ? Move.GetToIndex(move) >= 32 : Move.GetToIndex(move) < 32);
 		}
 
 		/// <summary>Checks if this move is a promotion</summary>
@@ -189,22 +182,22 @@ namespace Com.Alonsoruibal.Chess
 			{
 				case TypePromotionQueen:
 				{
-					return Queen;
+					return Piece.Queen;
 				}
 
 				case TypePromotionRook:
 				{
-					return Rook;
+					return Piece.Rook;
 				}
 
 				case TypePromotionKnight:
 				{
-					return Knight;
+					return Piece.Knight;
 				}
 
 				case TypePromotionBishop:
 				{
-					return Bishop;
+					return Piece.Bishop;
 				}
 			}
 			return 0;
@@ -236,6 +229,17 @@ namespace Com.Alonsoruibal.Chess
 		/// <param name="move"/>
 		public static int GetFromString(Board board, string move, bool checkLegality)
 		{
+			if (NullString.Equals(move))
+			{
+				return Move.Null;
+			}
+			else
+			{
+				if (string.Empty.Equals(move) || NoneString.Equals(move))
+				{
+					return Move.None;
+				}
+			}
 			int fromIndex;
 			int toIndex;
 			int moveType = 0;
@@ -364,8 +368,7 @@ namespace Com.Alonsoruibal.Chess
 				if (move.Length == 3)
 				{
 					// Pawn capture
-					from = board.pawns & mines & (turn ? bbAttacks.pawnDownwards[toIndex] : bbAttacks
-						.pawnUpwards[toIndex]);
+					from = board.pawns & mines & bbAttacks.pawn[turn ? Color.B : Color.W][toIndex];
 				}
 			}
 			if (move.Length == 3)
@@ -375,7 +378,7 @@ namespace Com.Alonsoruibal.Chess
 				int i = "abcdefgh".IndexOf(disambiguate);
 				if (i >= 0)
 				{
-					from &= BitboardUtils.Column[i];
+					from &= BitboardUtils.File[i];
 				}
 				int j = "12345678".IndexOf(disambiguate);
 				if (j >= 0)
@@ -388,9 +391,9 @@ namespace Com.Alonsoruibal.Chess
 				// was algebraic complete e2e4 (=UCI!)
 				from = BitboardUtils.Algebraic2Square(Sharpen.Runtime.Substring(move, 0, 2));
 			}
-			if (from == 0)
+			if (from == 0 || (from & board.GetMines()) == 0)
 			{
-				return -1;
+				return None;
 			}
 			// Treats multiple froms, choosing the first Legal Move
 			while (from != 0)
@@ -401,7 +404,7 @@ namespace Com.Alonsoruibal.Chess
 				bool capture = false;
 				if ((myFrom & board.pawns) != 0)
 				{
-					pieceMoved = Pawn;
+					pieceMoved = Piece.Pawn;
 					// for passant captures
 					if ((toIndex != (fromIndex - 8)) && (toIndex != (fromIndex + 8)) && (toIndex != (
 						fromIndex - 16)) && (toIndex != (fromIndex + 16)))
@@ -422,31 +425,31 @@ namespace Com.Alonsoruibal.Chess
 				}
 				if ((myFrom & board.bishops) != 0)
 				{
-					pieceMoved = Bishop;
+					pieceMoved = Piece.Bishop;
 				}
 				else
 				{
 					if ((myFrom & board.knights) != 0)
 					{
-						pieceMoved = Knight;
+						pieceMoved = Piece.Knight;
 					}
 					else
 					{
 						if ((myFrom & board.rooks) != 0)
 						{
-							pieceMoved = Rook;
+							pieceMoved = Piece.Rook;
 						}
 						else
 						{
 							if ((myFrom & board.queens) != 0)
 							{
-								pieceMoved = Queen;
+								pieceMoved = Piece.Queen;
 							}
 							else
 							{
 								if ((myFrom & board.kings) != 0)
 								{
-									pieceMoved = King;
+									pieceMoved = Piece.King;
 									if ((turn ? board.GetWhiteKingsideCastling() : board.GetBlackKingsideCastling()) 
 										&& (toIndex == (fromIndex - 2) || to == board.castlingRooks[turn ? 0 : 2]))
 									{
@@ -489,7 +492,7 @@ namespace Com.Alonsoruibal.Chess
 					return moveInt;
 				}
 			}
-			return -1;
+			return None;
 		}
 
 		/// <summary>Gets an UCI-String representation of the move</summary>
@@ -497,9 +500,16 @@ namespace Com.Alonsoruibal.Chess
 		/// <returns/>
 		public static string ToString(int move)
 		{
-			if (move == 0 || move == -1)
+			if (move == Move.None)
 			{
-				return "none";
+				return NoneString;
+			}
+			else
+			{
+				if (move == Move.Null)
+				{
+					return NullString;
+				}
 			}
 			StringBuilder sb = new StringBuilder();
 			sb.Append(BitboardUtils.Index2Algebraic(Move.GetFromIndex(move)));
@@ -513,26 +523,33 @@ namespace Com.Alonsoruibal.Chess
 
 		public static string ToStringExt(int move)
 		{
-			if (move == 0 || move == -1)
+			if (move == Move.None)
 			{
-				return "none";
+				return NoneString;
 			}
 			else
 			{
-				if (Move.GetMoveType(move) == TypeKingsideCastling)
+				if (move == Move.Null)
 				{
-					return Move.IsCheck(move) ? "O-O+" : "O-O";
+					return NullString;
 				}
 				else
 				{
-					if (Move.GetMoveType(move) == TypeQueensideCastling)
+					if (Move.GetMoveType(move) == TypeKingsideCastling)
 					{
-						return Move.IsCheck(move) ? "O-O-O+" : "O-O-O";
+						return Move.IsCheck(move) ? "O-O+" : "O-O";
+					}
+					else
+					{
+						if (Move.GetMoveType(move) == TypeQueensideCastling)
+						{
+							return Move.IsCheck(move) ? "O-O-O+" : "O-O-O";
+						}
 					}
 				}
 			}
 			StringBuilder sb = new StringBuilder();
-			if (GetPieceMoved(move) != Move.Pawn)
+			if (GetPieceMoved(move) != Piece.Pawn)
 			{
 				sb.Append(PieceLettersUppercase[GetPieceMoved(move)]);
 			}
@@ -556,11 +573,22 @@ namespace Com.Alonsoruibal.Chess
 		/// <returns/>
 		public static string ToSan(Board board, int move)
 		{
+			if (move == Move.None)
+			{
+				return NoneString;
+			}
+			else
+			{
+				if (move == Move.Null)
+				{
+					return NullString;
+				}
+			}
 			board.GenerateLegalMoves();
 			bool isLegal = false;
 			bool disambiguate = false;
-			bool colEqual = false;
-			bool rowEqual = false;
+			bool fileEqual = false;
+			bool rankEqual = false;
 			for (int i = 0; i < board.legalMoveCount; i++)
 			{
 				int move2 = board.legalMoves[i];
@@ -576,18 +604,18 @@ namespace Com.Alonsoruibal.Chess
 						disambiguate = true;
 						if ((GetFromIndex(move) % 8) == (GetFromIndex(move2) % 8))
 						{
-							colEqual = true;
+							fileEqual = true;
 						}
 						if ((GetFromIndex(move) / 8) == (GetFromIndex(move2) / 8))
 						{
-							rowEqual = true;
+							rankEqual = true;
 						}
 					}
 				}
 			}
-			if (move == 0 || move == -1 || !isLegal)
+			if (!isLegal)
 			{
-				return "none";
+				return Move.NoneString;
 			}
 			else
 			{
@@ -604,24 +632,24 @@ namespace Com.Alonsoruibal.Chess
 				}
 			}
 			StringBuilder sb = new StringBuilder();
-			if (GetPieceMoved(move) != Move.Pawn)
+			if (GetPieceMoved(move) != Piece.Pawn)
 			{
 				sb.Append(PieceLettersUppercase[GetPieceMoved(move)]);
 			}
 			string fromSq = BitboardUtils.Index2Algebraic(Move.GetFromIndex(move));
-			if (IsCapture(move) && GetPieceMoved(move) == Move.Pawn)
+			if (IsCapture(move) && GetPieceMoved(move) == Piece.Pawn)
 			{
 				disambiguate = true;
 			}
 			if (disambiguate)
 			{
-				if (colEqual && rowEqual)
+				if (fileEqual && rankEqual)
 				{
 					sb.Append(fromSq);
 				}
 				else
 				{
-					if (colEqual && !rowEqual)
+					if (fileEqual)
 					{
 						sb.Append(fromSq[1]);
 					}
@@ -655,6 +683,12 @@ namespace Com.Alonsoruibal.Chess
 				System.Console.Out.Write(" ");
 			}
 			System.Console.Out.WriteLine();
+		}
+
+		public static string SanToFigurines(string @in)
+		{
+			return @in == null ? null : @in.Replace("N", "♘").Replace("B", "♗").Replace("R", 
+				"♖").Replace("Q", "♕").Replace("K", "♔");
 		}
 	}
 }

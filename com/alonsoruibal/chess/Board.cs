@@ -69,7 +69,7 @@ namespace Com.Alonsoruibal.Chess
 
 		internal long[] legalMovesKey = new long[] { 0, 0 };
 
-		public Dictionary<int, string> sanMoves;
+		public Dictionary<int, string> movesSan;
 
 		public long whites = 0;
 
@@ -322,7 +322,7 @@ namespace Com.Alonsoruibal.Chess
 			fiftyMovesRuleHistory = new int[MaxMoves];
 			seeGain = new int[32];
 			moveHistory = new int[MaxMoves];
-			sanMoves = new Dictionary<int, string>();
+			movesSan = new Dictionary<int, string>();
 			bbAttacks = BitboardAttacks.GetInstance();
 		}
 
@@ -433,17 +433,63 @@ namespace Com.Alonsoruibal.Chess
 			return (flags & FlagTurn) == 0 ? blacks : whites;
 		}
 
+		public virtual int GetPieceIntAt(long square)
+		{
+			return ((pawns & square) != 0 ? Piece.Pawn : ((knights & square) != 0 ? Piece.Knight
+				 : ((bishops & square) != 0 ? Piece.Bishop : ((rooks & square) != 0 ? Piece.Rook
+				 : ((queens & square) != 0 ? Piece.Queen : ((kings & square) != 0 ? Piece.King : 
+				'.'))))));
+		}
+
+		//
+		//
+		//
+		//
+		//
 		public virtual char GetPieceAt(long square)
 		{
-			char p = ((pawns & square) != 0 ? 'p' : ((queens & square) != 0 ? 'q' : ((rooks &
-				 square) != 0 ? 'r' : ((bishops & square) != 0 ? 'b' : ((knights & square) != 0 ? 
-				'n' : ((kings & square) != 0 ? 'k' : '.'))))));
+			char p = ((pawns & square) != 0 ? 'p' : ((knights & square) != 0 ? 'n' : ((bishops
+				 & square) != 0 ? 'b' : ((rooks & square) != 0 ? 'r' : ((queens & square) != 0 ? 
+				'q' : ((kings & square) != 0 ? 'k' : '.'))))));
 			//
 			//
 			//
 			//
 			//
 			return ((whites & square) != 0 ? System.Char.ToUpper(p) : p);
+		}
+
+		public virtual char GetPieceUnicodeAt(long square)
+		{
+			if ((whites & square) != 0)
+			{
+				return ((pawns & square) != 0 ? '♙' : ((knights & square) != 0 ? '♘' : ((bishops 
+					& square) != 0 ? '♗' : ((rooks & square) != 0 ? '♖' : ((queens & square) != 0 ? 
+					'♕' : ((kings & square) != 0 ? '♔' : '.'))))));
+			}
+			else
+			{
+				//
+				//
+				//
+				//
+				//
+				if ((blacks & square) != 0)
+				{
+					return ((pawns & square) != 0 ? '♟' : ((knights & square) != 0 ? '♞' : ((bishops 
+						& square) != 0 ? '♝' : ((rooks & square) != 0 ? '♜' : ((queens & square) != 0 ? 
+						'♛' : ((kings & square) != 0 ? '♚' : '.'))))));
+				}
+				else
+				{
+					//
+					//
+					//
+					//
+					//
+					return '_';
+				}
+			}
 		}
 
 		public virtual void SetPieceAt(long square, char piece)
@@ -511,13 +557,15 @@ namespace Com.Alonsoruibal.Chess
 					break;
 				}
 			}
+			key = ZobristKey.GetKey(this);
+			SetCheckFlags();
 		}
 
 		/// <summary>Converts board to its fen notation</summary>
 		public virtual string GetFen()
 		{
 			StringBuilder sb = new StringBuilder();
-			long i = BitboardUtils.A8;
+			long i = Square.A8;
 			int j = 0;
 			while (i != 0)
 			{
@@ -600,7 +648,7 @@ namespace Com.Alonsoruibal.Chess
 			long[] tmpCastlingRooks = new long[] { 0, 0, 0, 0 };
 			int fenMoveNumber = 0;
 			int i = 0;
-			long j = BitboardUtils.A8;
+			long j = Square.A8;
 			string[] tokens = fen.Split("[ \\t\\n\\x0B\\f\\r]+");
 			string board = tokens[0];
 			while ((i < board.Length) && (j != 0))
@@ -687,12 +735,12 @@ namespace Com.Alonsoruibal.Chess
 
 						default:
 						{
-							// Shredder-FEN receives the name of the column where the castling rook is
-							int whiteColumn = "ABCDEFGH".IndexOf(c);
-							int blackColumn = "abcdefgh".IndexOf(c);
-							if (whiteColumn >= 0)
+							// Shredder-FEN receives the name of the file where the castling rook is
+							int whiteFile = "ABCDEFGH".IndexOf(c);
+							int blackFile = "abcdefgh".IndexOf(c);
+							if (whiteFile >= 0)
 							{
-								long rookSquare = BitboardUtils.b_d & BitboardUtils.Column[whiteColumn];
+								long rookSquare = BitboardUtils.b_d & BitboardUtils.File[whiteFile];
 								if ((rookSquare & whiteKingLateralSquares[0]) != 0)
 								{
 									possibleCastlingRookSquares[0] = rookSquare;
@@ -707,9 +755,9 @@ namespace Com.Alonsoruibal.Chess
 							}
 							else
 							{
-								if (blackColumn >= 0)
+								if (blackFile >= 0)
 								{
-									long rookSquare = BitboardUtils.b_u & BitboardUtils.Column[blackColumn];
+									long rookSquare = BitboardUtils.b_u & BitboardUtils.File[blackFile];
 									if ((rookSquare & whiteKingLateralSquares[2]) != 0)
 									{
 										possibleCastlingRookSquares[2] = rookSquare;
@@ -827,7 +875,7 @@ namespace Com.Alonsoruibal.Chess
 				//
 				//
 				// board reset
-				sanMoves.Clear();
+				movesSan.Clear();
 				initialFen = fen;
 				initialMoveNumber = fenMoveNumber;
 				moveNumber = fenMoveNumber;
@@ -868,23 +916,28 @@ namespace Com.Alonsoruibal.Chess
 		{
 			StringBuilder sb = new StringBuilder();
 			int j = 8;
-			long i = BitboardUtils.A8;
+			long i = Square.A8;
 			while (i != 0)
 			{
-				sb.Append(GetPieceAt(i));
+				sb.Append(GetPieceUnicodeAt(i));
 				sb.Append(" ");
 				if ((i & BitboardUtils.b_r) != 0)
 				{
 					sb.Append(j--);
+					if (i == Square.H1)
+					{
+						sb.Append(" ");
+						sb.Append(GetFen());
+					}
 					sb.Append("\n");
 				}
 				i = (long)(((ulong)i) >> 1);
 			}
-			sb.Append("a b c d e f g h  ");
-			sb.Append((GetTurn() ? "white move " : "blacks move "));
-			sb.Append((GetWhiteKingsideCastling() ? "K" : string.Empty) + (GetWhiteQueensideCastling
-				() ? "Q" : string.Empty) + (GetBlackKingsideCastling() ? "k" : string.Empty) + (
-				GetBlackQueensideCastling() ? "q" : string.Empty));
+			sb.Append("a b c d e f g h   ");
+			sb.Append((GetTurn() ? "white moves " : "black moves "));
+			sb.Append((GetWhiteKingsideCastling() ? " W:0-0" : string.Empty) + (GetWhiteQueensideCastling
+				() ? " W:0-0-0" : string.Empty) + (GetBlackKingsideCastling() ? " B:0-0" : string.Empty
+				) + (GetBlackQueensideCastling() ? " B:0-0-0" : string.Empty));
 			return sb.ToString();
 		}
 
@@ -906,14 +959,14 @@ namespace Com.Alonsoruibal.Chess
 			}
 			Arrays.Fill(fiftyMovesRuleHistory, 0);
 			Arrays.Fill(moveHistory, 0);
-			sanMoves.Clear();
+			movesSan.Clear();
 		}
 
 		private void SaveHistory(int move, bool fillSanInfo)
 		{
 			if (fillSanInfo)
 			{
-				sanMoves[moveNumber] = Move.ToSan(this, move);
+				movesSan[moveNumber] = Move.ToSan(this, move);
 			}
 			moveHistory[moveNumber] = move;
 			whitesHistory[moveNumber] = whites;
@@ -930,15 +983,6 @@ namespace Com.Alonsoruibal.Chess
 			fiftyMovesRuleHistory[moveNumber] = fiftyMovesRule;
 		}
 
-		public virtual int GetLastMove()
-		{
-			if (moveNumber == 0)
-			{
-				return 0;
-			}
-			return moveHistory[moveNumber - 1];
-		}
-
 		/// <summary>This is very inefficient because it fills the San info, so it must not be called from inside search
 		/// 	</summary>
 		public virtual bool DoMove(int move)
@@ -948,235 +992,242 @@ namespace Com.Alonsoruibal.Chess
 
 		/// <summary>
 		/// Moves and also updates the board's zobrist key verify legality, if not
-		/// legal undo move and return false 0 is the null move
+		/// legal undo move and return false
 		/// </summary>
 		public virtual bool DoMove(int move, bool verify, bool fillSanInfo)
 		{
-			if (move == -1)
+			if (move == Move.None)
 			{
 				return false;
 			}
 			// Save history
 			SaveHistory(move, fillSanInfo);
+			// Count consecutive moves without capture or without pawn move
+			fiftyMovesRule++;
+			moveNumber++;
+			// Count Ply moves
+			bool turn = GetTurn();
+			int color = turn ? Color.W : Color.B;
+			if ((flags & FlagsPassant) != 0)
+			{
+				// Remove passant flags: from the zobrist key
+				key[1 - color] ^= ZobristKey.passantFile[BitboardUtils.GetFile(flags & FlagsPassant
+					)];
+				// and from the flags
+				flags &= ~FlagsPassant;
+			}
+			if (move == Move.Null)
+			{
+				// Change turn
+				flags ^= FlagTurn;
+				key[0] ^= ZobristKey.whiteMove;
+				return true;
+			}
 			int fromIndex = Move.GetFromIndex(move);
-			int toIndex = Move.GetToIndex(move);
 			long from = Move.GetFromSquare(move);
+			// Check if we are applying a move in the other turn
+			if ((from & GetMines()) == 0)
+			{
+				UndoMove();
+				return false;
+			}
+			int toIndex = Move.GetToIndex(move);
 			long to = Move.GetToSquare(move);
 			long moveMask = from | to;
 			// Move is as easy as xor with this mask (exceptions are promotions, captures and en-passant captures)
 			int moveType = Move.GetMoveType(move);
 			int pieceMoved = Move.GetPieceMoved(move);
 			bool capture = Move.IsCapture(move);
-			bool turn = GetTurn();
-			int color = (turn ? 0 : 1);
-			// Count consecutive moves without capture or without pawn move
-			fiftyMovesRule++;
-			moveNumber++;
-			// Count Ply moves
-			// Remove passant flags: from the zobrist key
-			if ((flags & FlagsPassant) != 0)
+			// Is it is a capture, remove pieces in destination square
+			if (capture)
 			{
-				key[1 - color] ^= ZobristKey.passantColumn[BitboardUtils.GetColumn(flags & FlagsPassant
-					)];
-			}
-			// and from the flags
-			flags &= ~FlagsPassant;
-			if (move != 0)
-			{
-				System.Diagnostics.Debug.Assert((from & GetMines()) != 0, "Origin square not valid"
-					);
-				// Is it is a capture, remove pieces in destination square
-				if (capture)
+				fiftyMovesRule = 0;
+				// En-passant pawn captures remove captured pawn, put the pawn in to
+				int toIndexCapture = toIndex;
+				if (moveType == Move.TypePassant)
 				{
-					fiftyMovesRule = 0;
-					// En-passant pawn captures remove captured pawn, put the pawn in to
-					int toIndexCapture = toIndex;
-					if (moveType == Move.TypePassant)
-					{
-						to = (GetTurn() ? ((long)(((ulong)to) >> 8)) : (to << 8));
-						toIndexCapture += (GetTurn() ? -8 : 8);
-					}
-					key[1 - color] ^= ZobristKey.GetKeyPieceIndex(toIndexCapture, GetPieceAt(to));
-					whites &= ~to;
-					blacks &= ~to;
-					pawns &= ~to;
-					queens &= ~to;
-					rooks &= ~to;
-					bishops &= ~to;
-					knights &= ~to;
+					to = (GetTurn() ? ((long)(((ulong)to) >> 8)) : (to << 8));
+					toIndexCapture += (GetTurn() ? -8 : 8);
 				}
-				switch (pieceMoved)
+				key[1 - color] ^= ZobristKey.GetKeyPieceIndex(toIndexCapture, GetPieceAt(to));
+				whites &= ~to;
+				blacks &= ~to;
+				pawns &= ~to;
+				queens &= ~to;
+				rooks &= ~to;
+				bishops &= ~to;
+				knights &= ~to;
+			}
+			switch (pieceMoved)
+			{
+				case Piece.Pawn:
 				{
-					case Move.Pawn:
+					// Pawn movements
+					fiftyMovesRule = 0;
+					// Set new passant flags if pawn is advancing two squares (marks
+					// the destination square where the pawn can be captured)
+					// Set only passant flags when the other side can capture
+					if (((from << 16) & to) != 0 && (bbAttacks.pawn[Color.W][toIndex - 8] & pawns & GetOthers
+						()) != 0)
 					{
-						// Pawn movements
-						fiftyMovesRule = 0;
-						// Set new passant flags if pawn is advancing two squares (marks
-						// the destination square where the pawn can be captured)
-						// Set only passant flags when the other side can capture
-						if (((from << 16) & to) != 0 && (bbAttacks.pawnUpwards[toIndex - 8] & pawns & GetOthers
-							()) != 0)
+						// white
+						flags |= (from << 8);
+					}
+					if ((((long)(((ulong)from) >> 16)) & to) != 0 && (bbAttacks.pawn[Color.B][toIndex
+						 + 8] & pawns & GetOthers()) != 0)
+					{
+						// blask
+						flags |= ((long)(((ulong)from) >> 8));
+					}
+					if ((flags & FlagsPassant) != 0)
+					{
+						key[color] ^= ZobristKey.passantFile[BitboardUtils.GetFile(flags & FlagsPassant)];
+					}
+					if (moveType == Move.TypePromotionQueen || moveType == Move.TypePromotionKnight ||
+						 moveType == Move.TypePromotionBishop || moveType == Move.TypePromotionRook)
+					{
+						// Promotions:
+						// change
+						// the piece
+						pawns &= ~from;
+						key[color] ^= ZobristKey.pawn[color][fromIndex];
+						switch (moveType)
 						{
-							// white
-							flags |= (from << 8);
-						}
-						if ((((long)(((ulong)from) >> 16)) & to) != 0 && (bbAttacks.pawnDownwards[toIndex
-							 + 8] & pawns & GetOthers()) != 0)
-						{
-							// blask
-							flags |= ((long)(((ulong)from) >> 8));
-						}
-						if ((flags & FlagsPassant) != 0)
-						{
-							key[color] ^= ZobristKey.passantColumn[BitboardUtils.GetColumn(flags & FlagsPassant
-								)];
-						}
-						if (moveType == Move.TypePromotionQueen || moveType == Move.TypePromotionKnight ||
-							 moveType == Move.TypePromotionBishop || moveType == Move.TypePromotionRook)
-						{
-							// Promotions:
-							// change
-							// the piece
-							pawns &= ~from;
-							key[color] ^= ZobristKey.pawn[color][fromIndex];
-							switch (moveType)
+							case Move.TypePromotionQueen:
 							{
-								case Move.TypePromotionQueen:
-								{
-									queens |= to;
-									key[color] ^= ZobristKey.queen[color][toIndex];
-									break;
-								}
-
-								case Move.TypePromotionKnight:
-								{
-									knights |= to;
-									key[color] ^= ZobristKey.knight[color][toIndex];
-									break;
-								}
-
-								case Move.TypePromotionBishop:
-								{
-									bishops |= to;
-									key[color] ^= ZobristKey.bishop[color][toIndex];
-									break;
-								}
-
-								case Move.TypePromotionRook:
-								{
-									rooks |= to;
-									key[color] ^= ZobristKey.rook[color][toIndex];
-									break;
-								}
+								queens |= to;
+								key[color] ^= ZobristKey.queen[color][toIndex];
+								break;
 							}
+
+							case Move.TypePromotionKnight:
+							{
+								knights |= to;
+								key[color] ^= ZobristKey.knight[color][toIndex];
+								break;
+							}
+
+							case Move.TypePromotionBishop:
+							{
+								bishops |= to;
+								key[color] ^= ZobristKey.bishop[color][toIndex];
+								break;
+							}
+
+							case Move.TypePromotionRook:
+							{
+								rooks |= to;
+								key[color] ^= ZobristKey.rook[color][toIndex];
+								break;
+							}
+						}
+					}
+					else
+					{
+						pawns ^= moveMask;
+						key[color] ^= ZobristKey.pawn[color][fromIndex] ^ ZobristKey.pawn[color][toIndex];
+					}
+					break;
+				}
+
+				case Piece.Rook:
+				{
+					rooks ^= moveMask;
+					key[color] ^= ZobristKey.rook[color][fromIndex] ^ ZobristKey.rook[color][toIndex];
+					break;
+				}
+
+				case Piece.Bishop:
+				{
+					bishops ^= moveMask;
+					key[color] ^= ZobristKey.bishop[color][fromIndex] ^ ZobristKey.bishop[color][toIndex
+						];
+					break;
+				}
+
+				case Piece.Knight:
+				{
+					knights ^= moveMask;
+					key[color] ^= ZobristKey.knight[color][fromIndex] ^ ZobristKey.knight[color][toIndex
+						];
+					break;
+				}
+
+				case Piece.Queen:
+				{
+					queens ^= moveMask;
+					key[color] ^= ZobristKey.queen[color][fromIndex] ^ ZobristKey.queen[color][toIndex
+						];
+					break;
+				}
+
+				case Piece.King:
+				{
+					// if castling, moves rooks too
+					if (moveType == Move.TypeKingsideCastling || moveType == Move.TypeQueensideCastling)
+					{
+						// {White Kingside, White Queenside, Black Kingside, Black Queenside}
+						int j = (color << 1) + (moveType == Move.TypeQueensideCastling ? 1 : 0);
+						toIndex = CastlingKingDestinyIndex[j];
+						int originRookIndex = BitboardUtils.Square2Index(castlingRooks[j]);
+						int destinyRookIndex = CastlingRookDestinyIndex[j];
+						// Recalculate move mask for chess960 castlings
+						moveMask = from ^ (1L << toIndex);
+						long rookMoveMask = (1L << originRookIndex) ^ (1L << destinyRookIndex);
+						key[color] ^= ZobristKey.rook[color][originRookIndex] ^ ZobristKey.rook[color][destinyRookIndex
+							];
+						if (GetTurn())
+						{
+							whites ^= rookMoveMask;
 						}
 						else
 						{
-							pawns ^= moveMask;
-							key[color] ^= ZobristKey.pawn[color][fromIndex] ^ ZobristKey.pawn[color][toIndex];
+							blacks ^= rookMoveMask;
 						}
-						break;
+						rooks ^= rookMoveMask;
 					}
-
-					case Move.Rook:
-					{
-						rooks ^= moveMask;
-						key[color] ^= ZobristKey.rook[color][fromIndex] ^ ZobristKey.rook[color][toIndex];
-						break;
-					}
-
-					case Move.Bishop:
-					{
-						bishops ^= moveMask;
-						key[color] ^= ZobristKey.bishop[color][fromIndex] ^ ZobristKey.bishop[color][toIndex
-							];
-						break;
-					}
-
-					case Move.Knight:
-					{
-						knights ^= moveMask;
-						key[color] ^= ZobristKey.knight[color][fromIndex] ^ ZobristKey.knight[color][toIndex
-							];
-						break;
-					}
-
-					case Move.Queen:
-					{
-						queens ^= moveMask;
-						key[color] ^= ZobristKey.queen[color][fromIndex] ^ ZobristKey.queen[color][toIndex
-							];
-						break;
-					}
-
-					case Move.King:
-					{
-						// if castling, moves rooks too
-						if (moveType == Move.TypeKingsideCastling || moveType == Move.TypeQueensideCastling)
-						{
-							// {White Kingside, White Queenside, Black Kingside, Black Queenside}
-							int j = (color << 1) + (moveType == Move.TypeQueensideCastling ? 1 : 0);
-							toIndex = CastlingKingDestinyIndex[j];
-							int originRookIndex = BitboardUtils.Square2Index(castlingRooks[j]);
-							int destinyRookIndex = CastlingRookDestinyIndex[j];
-							// Recalculate move mask for chess960 castlings
-							moveMask = from ^ (1L << toIndex);
-							long rookMoveMask = (1L << originRookIndex) ^ (1L << destinyRookIndex);
-							key[color] ^= ZobristKey.rook[color][originRookIndex] ^ ZobristKey.rook[color][destinyRookIndex
-								];
-							if (GetTurn())
-							{
-								whites ^= rookMoveMask;
-							}
-							else
-							{
-								blacks ^= rookMoveMask;
-							}
-							rooks ^= rookMoveMask;
-						}
-						kings ^= moveMask;
-						key[color] ^= ZobristKey.king[color][fromIndex] ^ ZobristKey.king[color][toIndex];
-						break;
-					}
+					kings ^= moveMask;
+					key[color] ^= ZobristKey.king[color][fromIndex] ^ ZobristKey.king[color][toIndex];
+					break;
 				}
-				// Move pieces in colour fields
-				if (GetTurn())
-				{
-					whites ^= moveMask;
-				}
-				else
-				{
-					blacks ^= moveMask;
-				}
-				// Tests to disable castling
-				if ((flags & FlagWhiteKingsideCastling) != 0 && ((turn && pieceMoved == Move.King
-					) || from == castlingRooks[0] || to == castlingRooks[0]))
-				{
-					//
-					flags &= ~FlagWhiteKingsideCastling;
-					key[0] ^= ZobristKey.whiteKingSideCastling;
-				}
-				if ((flags & FlagWhiteQueensideCastling) != 0 && ((turn && pieceMoved == Move.King
-					) || from == castlingRooks[1] || to == castlingRooks[1]))
-				{
-					//
-					flags &= ~FlagWhiteQueensideCastling;
-					key[0] ^= ZobristKey.whiteQueenSideCastling;
-				}
-				if ((flags & FlagBlackKingsideCastling) != 0 && ((!turn && pieceMoved == Move.King
-					) || from == castlingRooks[2] || to == castlingRooks[2]))
-				{
-					//
-					flags &= ~FlagBlackKingsideCastling;
-					key[1] ^= ZobristKey.blackKingSideCastling;
-				}
-				if ((flags & FlagBlackQueensideCastling) != 0 && ((!turn && pieceMoved == Move.King
-					) || from == castlingRooks[3] || to == castlingRooks[3]))
-				{
-					//
-					flags &= ~FlagBlackQueensideCastling;
-					key[1] ^= ZobristKey.blackQueenSideCastling;
-				}
+			}
+			// Move pieces in colour fields
+			if (GetTurn())
+			{
+				whites ^= moveMask;
+			}
+			else
+			{
+				blacks ^= moveMask;
+			}
+			// Tests to disable castling
+			if ((flags & FlagWhiteKingsideCastling) != 0 && ((turn && pieceMoved == Piece.King
+				) || from == castlingRooks[0] || to == castlingRooks[0]))
+			{
+				//
+				flags &= ~FlagWhiteKingsideCastling;
+				key[0] ^= ZobristKey.whiteKingSideCastling;
+			}
+			if ((flags & FlagWhiteQueensideCastling) != 0 && ((turn && pieceMoved == Piece.King
+				) || from == castlingRooks[1] || to == castlingRooks[1]))
+			{
+				//
+				flags &= ~FlagWhiteQueensideCastling;
+				key[0] ^= ZobristKey.whiteQueenSideCastling;
+			}
+			if ((flags & FlagBlackKingsideCastling) != 0 && ((!turn && pieceMoved == Piece.King
+				) || from == castlingRooks[2] || to == castlingRooks[2]))
+			{
+				//
+				flags &= ~FlagBlackKingsideCastling;
+				key[1] ^= ZobristKey.blackKingSideCastling;
+			}
+			if ((flags & FlagBlackQueensideCastling) != 0 && ((!turn && pieceMoved == Piece.King
+				) || from == castlingRooks[3] || to == castlingRooks[3]))
+			{
+				//
+				flags &= ~FlagBlackQueensideCastling;
+				key[1] ^= ZobristKey.blackQueenSideCastling;
 			}
 			// Change turn
 			flags ^= FlagTurn;
@@ -1191,7 +1242,7 @@ namespace Com.Alonsoruibal.Chess
 						if (IsMate())
 						{
 							// Append # when mate
-							sanMoves[moveNumber - 1] = sanMoves[moveNumber - 1].Replace("+", "#");
+							movesSan[moveNumber - 1] = movesSan[moveNumber - 1].Replace("+", "#");
 						}
 					}
 				}
@@ -1294,7 +1345,7 @@ namespace Com.Alonsoruibal.Chess
 			return endgameState == 1 || endgameState == -1;
 		}
 
-		/// <summary>checks draw by fiftymoves rule and threefold repetition</summary>
+		/// <summary>checks draw by fifty move rule and threefold repetition</summary>
 		public virtual bool IsDraw()
 		{
 			if (fiftyMovesRule >= 100)
@@ -1302,7 +1353,6 @@ namespace Com.Alonsoruibal.Chess
 				return true;
 			}
 			int repetitions = 0;
-			// logger.debug("My keys key0=" + key[0] + " " + " key1=" + key[1]);
 			for (int i = 0; i < (moveNumber - 1); i++)
 			{
 				if (keyHistory[i][0] == key[0] && keyHistory[i][1] == key[1])
@@ -1316,13 +1366,16 @@ namespace Com.Alonsoruibal.Chess
 				}
 			}
 			// Draw by no material to mate
+			// Kk, KNk, KNNk, KBK by FIDE rules, be careful: KNnk IS NOT a draw
 			return (pawns == 0 && rooks == 0 && queens == 0) && ((bishops == 0 && knights == 
-				0) || (bishops == 0 && BitboardUtils.PopCount(knights) == 1) || (knights == 0 &&
-				 BitboardUtils.PopCount(bishops) == 1));
+				0) || (knights == 0 && BitboardUtils.PopCount(bishops) == 1) || (bishops == 0 &&
+				 (BitboardUtils.PopCount(knights) == 1 || (BitboardUtils.PopCount(knights) == 2 
+				&& (BitboardUtils.PopCount(knights & whites) == 2 || BitboardUtils.PopCount(knights
+				 & ~whites) == 2)))));
 		}
 
 		//
-		//
+		// KNNk, check same color
 		public virtual int See(int move)
 		{
 			return See(Move.GetFromIndex(move), Move.GetToIndex(move), Move.GetPieceMoved(move
@@ -1331,8 +1384,9 @@ namespace Com.Alonsoruibal.Chess
 
 		public virtual int See(int move, AttacksInfo attacksInfo)
 		{
-			if ((attacksInfo.attackedSquares[GetTurn() ? 1 : 0] & Move.GetToSquare(move)) == 
-				0 && (attacksInfo.mayPin & Move.GetFromSquare(move)) == 0)
+			int them = GetTurn() ? 1 : 0;
+			if ((attacksInfo.attackedSquares[them] & Move.GetToSquare(move)) == 0 && (attacksInfo
+				.mayPin[them] & Move.GetFromSquare(move)) == 0)
 			{
 				return Move.IsCapture(move) ? Com.Alonsoruibal.Chess.Board.SeePieceValues[Move.GetPieceCaptured
 					(this, move)] : 0;
@@ -1360,8 +1414,7 @@ namespace Com.Alonsoruibal.Chess
 			{
 				long side = (d & 1) == 0 ? GetOthers() : GetMines();
 				d++;
-				// next depth and side
-				// speculative store, if defended
+				// next depth and side speculative store, if defended
 				seeGain[d] = SeePieceValues[pieceMoved] - seeGain[d - 1];
 				attacks ^= fromSquare;
 				// reset bit in set to traverse
@@ -1374,37 +1427,37 @@ namespace Com.Alonsoruibal.Chess
 				// Gets the next attacker
 				if ((fromCandidates = attacks & pawns & side) != 0)
 				{
-					pieceMoved = Move.Pawn;
+					pieceMoved = Piece.Pawn;
 				}
 				else
 				{
 					if ((fromCandidates = attacks & knights & side) != 0)
 					{
-						pieceMoved = Move.Knight;
+						pieceMoved = Piece.Knight;
 					}
 					else
 					{
 						if ((fromCandidates = attacks & bishops & side) != 0)
 						{
-							pieceMoved = Move.Bishop;
+							pieceMoved = Piece.Bishop;
 						}
 						else
 						{
 							if ((fromCandidates = attacks & rooks & side) != 0)
 							{
-								pieceMoved = Move.Rook;
+								pieceMoved = Piece.Rook;
 							}
 							else
 							{
 								if ((fromCandidates = attacks & queens & side) != 0)
 								{
-									pieceMoved = Move.Queen;
+									pieceMoved = Piece.Queen;
 								}
 								else
 								{
 									if ((fromCandidates = attacks & kings & side) != 0)
 									{
-										pieceMoved = Move.King;
+										pieceMoved = Piece.King;
 									}
 								}
 							}
@@ -1435,19 +1488,19 @@ namespace Com.Alonsoruibal.Chess
 		public virtual bool IsPassedPawn(int index)
 		{
 			int rank = index >> 3;
-			int column = 7 - index & 7;
+			int file = 7 - index & 7;
 			long square = unchecked((long)(0x1L)) << index;
 			if ((whites & square) != 0)
 			{
-				return ((BitboardUtils.Column[column] | BitboardUtils.ColumnsAdjacents[column]) &
-					 BitboardUtils.RanksUpwards[rank] & pawns & blacks) == 0;
+				return ((BitboardUtils.File[file] | BitboardUtils.FilesAdjacent[file]) & BitboardUtils
+					.RanksUpwards[rank] & pawns & blacks) == 0;
 			}
 			else
 			{
 				if ((blacks & square) != 0)
 				{
-					return ((BitboardUtils.Column[column] | BitboardUtils.ColumnsAdjacents[column]) &
-						 BitboardUtils.RanksDownwards[rank] & pawns & whites) == 0;
+					return ((BitboardUtils.File[file] | BitboardUtils.FilesAdjacent[file]) & BitboardUtils
+						.RanksDownwards[rank] & pawns & whites) == 0;
 				}
 			}
 			return false;
@@ -1482,18 +1535,113 @@ namespace Com.Alonsoruibal.Chess
 		public virtual int GetLegalMoves(int[] moves)
 		{
 			GenerateLegalMoves();
-			System.Array.Copy(legalMoves, 0, moves, 0, legalMoveCount);
+			System.Array.Copy(legalMoves, 0, moves, 0, (legalMoveCount != -1 ? legalMoveCount
+				 : 0));
 			return legalMoveCount;
 		}
 
 		public virtual string GetSanMove(int moveNumber)
 		{
-			return sanMoves[moveNumber];
+			return movesSan[moveNumber];
 		}
 
 		public virtual bool GetMoveTurn(int moveNumber)
 		{
 			return (flagsHistory[moveNumber] & FlagTurn) == 0;
+		}
+
+		public virtual string GetInitialFen()
+		{
+			return initialFen;
+		}
+
+		public virtual string GetMoves()
+		{
+			StringBuilder oSB = new StringBuilder();
+			for (int i = initialMoveNumber; i < moveNumber; i++)
+			{
+				if (oSB.Length > 0)
+				{
+					oSB.Append(" ");
+				}
+				oSB.Append(Move.ToString(moveHistory[i]));
+			}
+			return oSB.ToString();
+		}
+
+		public virtual string GetMovesSan()
+		{
+			StringBuilder oSB = new StringBuilder();
+			for (int i = initialMoveNumber; i < moveNumber; i++)
+			{
+				if (oSB.Length > 0)
+				{
+					oSB.Append(" ");
+				}
+				oSB.Append(movesSan[i]);
+			}
+			return oSB.ToString();
+		}
+
+		public virtual string ToSanNextMoves(string moves)
+		{
+			if (moves == null || string.Empty.Equals(moves.Trim()))
+			{
+				return string.Empty;
+			}
+			StringBuilder oSB = new StringBuilder();
+			string[] movesArray = moves.Split(" ");
+			int savedMoveNumber = moveNumber;
+			foreach (string moveString in movesArray)
+			{
+				int move = Move.GetFromString(this, moveString, true);
+				if (!DoMove(move))
+				{
+					UndoMove(savedMoveNumber);
+					return string.Empty;
+				}
+				if (oSB.Length > 0)
+				{
+					oSB.Append(" ");
+				}
+				oSB.Append(GetLastMoveSan());
+			}
+			UndoMove(savedMoveNumber);
+			return oSB.ToString();
+		}
+
+		public virtual int GetLastMove()
+		{
+			if (moveNumber == 0)
+			{
+				return Move.None;
+			}
+			return moveHistory[moveNumber - 1];
+		}
+
+		public virtual string GetLastMoveSan()
+		{
+			if (moveNumber == 0)
+			{
+				return null;
+			}
+			return movesSan[moveNumber - 1];
+		}
+
+		/// <summary>Convenience method to apply all the moves in a string separated by spaces
+		/// 	</summary>
+		public virtual void DoMoves(string moves)
+		{
+			if (moves == null || string.Empty.Equals(moves.Trim()))
+			{
+				return;
+			}
+			string[] movesArray = moves.Split(" ");
+			foreach (string moveString in movesArray)
+			{
+				int move = Move.GetFromString(this, moveString, true);
+				DoMove(move);
+			}
 		}
 	}
 }

@@ -45,7 +45,7 @@ namespace Com.Alonsoruibal.Chess.TT
 
 		private short eval;
 
-		private byte generation;
+		private int generation;
 
 		private int entriesOccupied;
 
@@ -114,14 +114,14 @@ namespace Com.Alonsoruibal.Chess.TT
 			return (int)(((long)(((ulong)info) >> 21)) & unchecked((int)(0xf)));
 		}
 
-		public virtual byte GetGeneration()
+		public virtual int GetGeneration()
 		{
-			return unchecked((byte)(((long)(((ulong)info) >> 32)) & unchecked((int)(0xff))));
+			return (int)(((long)(((ulong)info) >> 32)) & unchecked((int)(0xff)));
 		}
 
-		public virtual byte GetDepthAnalyzed()
+		public virtual int GetDepthAnalyzed()
 		{
-			return unchecked((byte)(((long)(((ulong)info) >> 40)) & unchecked((int)(0xff))));
+			return (int)((long)(((ulong)info) >> 40)) & unchecked((int)(0xff));
 		}
 
 		public virtual int GetScore()
@@ -136,7 +136,7 @@ namespace Com.Alonsoruibal.Chess.TT
 
 		public virtual void NewGeneration()
 		{
-			generation++;
+			generation = (generation + 1) & unchecked((int)(0xff));
 		}
 
 		public virtual bool IsMyGeneration()
@@ -161,10 +161,10 @@ namespace Com.Alonsoruibal.Chess.TT
 					fixedScore -= distanceToInitialPly;
 				}
 			}
-			System.Diagnostics.Debug.Assert(fixedScore >= -Evaluator.Victory && fixedScore <=
-				 Evaluator.Victory, "Fixed TT score is outside limits");
+			System.Diagnostics.Debug.Assert(fixedScore >= -Evaluator.Mate && fixedScore <= Evaluator
+				.Mate, "Fixed TT score is outside limits");
 			System.Diagnostics.Debug.Assert(Math.Abs(eval) < SearchEngine.ValueIsMate || Math
-				.Abs(eval) == Evaluator.Victory || eval == Evaluator.NoValue, "Storing a eval value in the TT outside limits"
+				.Abs(eval) == Evaluator.Mate || eval == Evaluator.NoValue, "Storing a eval value in the TT outside limits"
 				);
 			if (score <= lowerBound)
 			{
