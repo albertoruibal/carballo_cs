@@ -67,6 +67,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private int lastMoveSee;
 
+		private bool lastMoveIsKiller;
+
 		private int killer1;
 
 		private int killer2;
@@ -135,21 +137,39 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		private BitboardAttacks bbAttacks;
 
-		//
-		// Kind of moves to generate
-		// In check evasions all moves are always generated
-		// Generates only good/equal captures and queen promotions
-		// Generates only good/equal captures, queen promotions and checks
-		//
-		// Move generation phases
-		//
-		// Stores captures and queen promotions
-		// Stores captures and queen promotions
-		// Stores captures and queen promotions
-		// Stores non captures and underpromotions
+		public MoveIterator(Board board, AttacksInfo ai, SortInfo sortInfo, int depth)
+		{
+			//
+			// Kind of moves to generate
+			// In check evasions all moves are always generated
+			// Generates only good/equal captures and queen promotions
+			// Generates only good/equal captures, queen promotions and checks
+			//
+			// Move generation phases
+			//
+			// Stores captures and queen promotions
+			// Stores captures and queen promotions
+			// Stores captures and queen promotions
+			// Stores non captures and underpromotions
+			this.board = board;
+			this.ai = ai;
+			this.sortInfo = sortInfo;
+			this.depth = depth;
+			bbAttacks = BitboardAttacks.GetInstance();
+		}
+
 		public virtual int GetLastMoveSee()
 		{
-			return lastMoveSee != SeeNotCalculated ? lastMoveSee : board.See(move, ai);
+			if (lastMoveSee == SeeNotCalculated)
+			{
+				lastMoveSee = board.See(move, ai);
+			}
+			return lastMoveSee;
+		}
+
+		public virtual bool GetLastMoveIsKiller()
+		{
+			return lastMoveIsKiller;
 		}
 
 		public virtual void GenMoves(int ttMove)
@@ -163,7 +183,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			this.movesToGenerate = movesToGenerate;
 			phase = PhaseTt;
 			checkEvasion = board.GetCheck();
-			lastMoveSee = 0;
+			lastMoveSee = SeeNotCalculated;
+			lastMoveIsKiller = false;
 		}
 
 		private void InitMoveGen()
@@ -183,8 +204,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			nonCaptureIndex = 0;
 			// Only for clarity
 			turn = board.GetTurn();
-			us = turn ? 0 : 1;
-			them = turn ? 1 : 0;
+			us = turn ? Color.W : Color.B;
+			them = turn ? Color.B : Color.W;
 			all = board.GetAll();
 			mines = board.GetMines();
 			others = board.GetOthers();
@@ -199,17 +220,16 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (ttMove != Move.None)
 					{
-						lastMoveSee = Move.IsCapture(ttMove) || Move.IsCheck(ttMove) ? board.See(ttMove) : 
-							0;
-						if (checkEvasion || movesToGenerate == GenerateAll || Move.GetMoveType(ttMove) ==
-							 Move.TypePromotionQueen || (movesToGenerate == GenerateCapturesPromos && Move.IsCapture
-							(ttMove) && lastMoveSee >= 0) || (movesToGenerate == GenerateCapturesPromosChecks
-							 && (Move.IsCapture(ttMove) || Move.IsCheck(ttMove)) && lastMoveSee >= 0))
+						move = ttMove;
+						if (checkEvasion || movesToGenerate == GenerateAll || Move.GetMoveType(move) == Move
+							.TypePromotionQueen || (movesToGenerate == GenerateCapturesPromos && Move.IsCapture
+							(move) && GetLastMoveSee() >= 0) || (movesToGenerate == GenerateCapturesPromosChecks
+							 && Move.IsCaptureOrCheck(move) && GetLastMoveSee() >= 0))
 						{
 							//
 							//
 							//
-							return ttMove;
+							return move;
 						}
 					}
 					goto case PhaseGenCaptures;
@@ -275,11 +295,13 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 				case PhaseKiller1:
 				{
-					lastMoveSee = SeeNotCalculated;
 					phase++;
+					lastMoveIsKiller = true;
 					if (foundKiller1)
 					{
-						return killer1;
+						move = killer1;
+						lastMoveSee = SeeNotCalculated;
+						return move;
 					}
 					goto case PhaseKiller2;
 				}
@@ -289,7 +311,9 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller2)
 					{
-						return killer2;
+						move = killer2;
+						lastMoveSee = SeeNotCalculated;
+						return move;
 					}
 					goto case PhaseKiller3;
 				}
@@ -299,7 +323,9 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller3)
 					{
-						return killer3;
+						move = killer3;
+						lastMoveSee = SeeNotCalculated;
+						return move;
 					}
 					goto case PhaseKiller4;
 				}
@@ -309,13 +335,16 @@ namespace Com.Alonsoruibal.Chess.Movesort
 					phase++;
 					if (foundKiller4)
 					{
-						return killer4;
+						move = killer4;
+						lastMoveSee = SeeNotCalculated;
+						return move;
 					}
 					goto case PhaseNonCaptures;
 				}
 
 				case PhaseNonCaptures:
 				{
+					lastMoveIsKiller = false;
 					move = PickMoveFromArray(nonCaptureIndex, nonCaptures, nonCapturesScores, nonCapturesSee
 						);
 					if (move != Move.None)
@@ -369,15 +398,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 			{
 				return Move.None;
 			}
-		}
-
-		public MoveIterator(Board board, AttacksInfo ai, SortInfo sortInfo, int depth)
-		{
-			this.board = board;
-			this.ai = ai;
-			this.sortInfo = sortInfo;
-			this.depth = depth;
-			bbAttacks = BitboardAttacks.GetInstance();
 		}
 
 		public virtual void SetBoard(Board board)

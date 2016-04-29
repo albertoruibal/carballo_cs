@@ -1385,8 +1385,9 @@ namespace Com.Alonsoruibal.Chess
 		public virtual int See(int move, AttacksInfo attacksInfo)
 		{
 			int them = GetTurn() ? 1 : 0;
-			if ((attacksInfo.attackedSquares[them] & Move.GetToSquare(move)) == 0 && (attacksInfo
-				.mayPin[them] & Move.GetFromSquare(move)) == 0)
+			if (attacksInfo.boardKey == GetKey() && (attacksInfo.attackedSquares[them] & Move
+				.GetToSquare(move)) == 0 && (attacksInfo.mayPin[them] & Move.GetFromSquare(move)
+				) == 0)
 			{
 				return Move.IsCapture(move) ? Com.Alonsoruibal.Chess.Board.SeePieceValues[Move.GetPieceCaptured
 					(this, move)] : 0;

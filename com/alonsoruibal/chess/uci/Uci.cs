@@ -12,7 +12,7 @@ namespace Com.Alonsoruibal.Chess.Uci
 	/// <summary>UCI Interface</summary>
 	public class Uci : SearchObserver
 	{
-		internal const string Name = "Carballo Chess Engine v1.4";
+		internal const string Name = "Carballo Chess Engine v1.5";
 
 		internal const string Author = "Alberto Alonso Ruibal";
 
@@ -49,7 +49,6 @@ namespace Com.Alonsoruibal.Chess.Uci
 						System.Console.Out.WriteLine ("option name OwnBook type check default " + Config.DefaultUseBook);
 						System.Console.Out.WriteLine ("option name UCI_Chess960 type check default false");
 						System.Console.Out.WriteLine ("option name Evaluator type combo default " + Config.DefaultEvaluator + " var simplified var complete var experimental");
-						System.Console.Out.WriteLine ("option name Contempt Factor type spin default " + Config.DefaultContemptFactor + " min -200 max 200");
 						System.Console.Out.WriteLine ("option name Elo type spin default " + Config.DefaultElo + " min 500 max " + Config.DefaultElo);
 						System.Console.Out.WriteLine ("uciok");
 					} else {
@@ -72,8 +71,6 @@ namespace Com.Alonsoruibal.Chess.Uci
 								config.SetUseBook (System.Boolean.Parse (value));
 							} else if ("UCI_Chess960".Equals (name)) {
 								config.SetUciChess960 (System.Boolean.Parse (value));
-							} else if ("Contempt Factor".Equals (name)) {
-								config.SetContemptFactor (System.Convert.ToInt32 (value));
 							} else if ("Elo".Equals (name)) {
 								config.SetElo (System.Convert.ToInt32 (value));
 							}

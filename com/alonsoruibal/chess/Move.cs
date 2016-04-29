@@ -144,6 +144,11 @@ namespace Com.Alonsoruibal.Chess
 			return (move & CheckMask) != 0;
 		}
 
+		public static bool IsCaptureOrCheck(int move)
+		{
+			return (move & (CheckMask | CaptureMask)) != 0;
+		}
+
 		public static int GetMoveType(int move)
 		{
 			return (((int)(((uint)move) >> 17)) & unchecked((int)(0x7)));

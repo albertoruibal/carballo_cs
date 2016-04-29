@@ -24,18 +24,18 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			), Oe(42, 42), Oe(43, 43), Oe(44, 44), Oe(46, 46), Oe(47, 47), Oe(48, 48), Oe(49
 			, 49), Oe(50, 50), Oe(51, 51), Oe(52, 52), Oe(52, 52), Oe(53, 53), Oe(54, 54) } };
 
-		private static readonly int[] PawnAttacks = new int[] { 0, Oe(0, 0), Oe(5, 7), Oe
-			(5, 7), Oe(7, 10), Oe(8, 12), 0 };
+		private static readonly int[] PawnAttacks = new int[] { 0, 0, Oe(11, 15), Oe(12, 
+			16), Oe(17, 23), Oe(19, 25), 0 };
 
-		private static readonly int[] MinorAttacks = new int[] { 0, Oe(3, 4), Oe(5, 5), Oe
-			(5, 5), Oe(7, 10), Oe(7, 10), 0 };
+		private static readonly int[] MinorAttacks = new int[] { 0, Oe(3, 5), Oe(7, 9), Oe
+			(7, 9), Oe(10, 14), Oe(11, 15), 0 };
 
-		private static readonly int[] MajorAttacks = new int[] { 0, Oe(2, 3), Oe(4, 5), Oe
-			(4, 5), Oe(5, 5), Oe(5, 5), 0 };
+		private static readonly int[] MajorAttacks = new int[] { 0, Oe(2, 2), Oe(3, 4), Oe
+			(3, 4), Oe(5, 6), Oe(5, 7), 0 };
 
 		private static readonly int HungPieces = Oe(16, 25);
 
-		private static readonly int PinnedPiece = Oe(5, 10);
+		private static readonly int PinnedPiece = Oe(7, 15);
 
 		private static readonly int[] PawnBackwards = new int[] { Oe(20, 15), Oe(10, 15) };
 
@@ -43,38 +43,40 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 
 		private static readonly int[] PawnDoubled = new int[] { Oe(8, 16), Oe(10, 20) };
 
-		private static readonly int PawnUnsupported = Oe(1, 2);
+		private static readonly int PawnUnsupported = Oe(2, 4);
 
-		private static readonly int[] PawnCandidate = new int[] { 0, Oe(5, 7), Oe(5, 7), 
-			Oe(7, 9), Oe(10, 14), Oe(14, 21), Oe(20, 30), 0 };
+		private static readonly int[] PawnCandidate = new int[] { 0, Oe(8, 13), Oe(8, 13)
+			, Oe(13, 20), Oe(24, 36), Oe(39, 59), Oe(60, 90), 0 };
 
-		private static readonly int[] PawnPasser = new int[] { 0, Oe(10, 20), Oe(10, 20), 
-			Oe(13, 25), Oe(19, 35), Oe(28, 50), Oe(40, 70), 0 };
+		private static readonly int[] PawnPasser = new int[] { 0, Oe(17, 25), Oe(17, 25), 
+			Oe(27, 41), Oe(48, 72), Oe(79, 118), Oe(120, 180), 0 };
 
-		private static readonly int[] PawnPasserOutside = new int[] { 0, Oe(2, 5), Oe(2, 
-			5), Oe(3, 7), Oe(4, 10), Oe(7, 14), Oe(10, 20), 0 };
+		private static readonly int[] PawnPasserOutside = new int[] { 0, Oe(3, 5), Oe(3, 
+			5), Oe(5, 8), Oe(10, 14), Oe(16, 24), Oe(24, 36), 0 };
 
-		private static readonly int[] PawnPasserConnected = new int[] { 0, 0, 0, Oe(1, 2)
-			, Oe(3, 5), Oe(6, 9), Oe(10, 15), 0 };
+		private static readonly int[] PawnPasserConnected = new int[] { 0, 0, 0, Oe(5, 7)
+			, Oe(14, 21), Oe(28, 42), Oe(47, 70), 0 };
 
-		private static readonly int[] PawnPasserSupported = new int[] { 0, 0, 0, Oe(2, 3)
-			, Oe(6, 9), Oe(12, 18), Oe(20, 30), 0 };
+		private static readonly int[] PawnPasserSupported = new int[] { 0, 0, 0, Oe(5, 8)
+			, Oe(16, 24), Oe(32, 48), Oe(53, 80), 0 };
 
-		private static readonly int[] PawnPasserMobile = new int[] { 0, 0, 0, Oe(1, 1), Oe
-			(2, 3), Oe(4, 6), Oe(7, 10), 0 };
+		private static readonly int[] PawnPasserMobile = new int[] { 0, 0, 0, Oe(3, 5), Oe
+			(9, 14), Oe(18, 27), Oe(30, 45), 0 };
 
-		private static readonly int[] PawnPasserRunner = new int[] { 0, 0, 0, Oe(2, 3), Oe
-			(6, 9), Oe(12, 18), Oe(20, 30), 0 };
+		private static readonly int[] PawnPasserRunner = new int[] { 0, 0, 0, Oe(4, 6), Oe
+			(12, 18), Oe(24, 36), Oe(40, 60), 0 };
 
-		private static readonly int[] PawnShield = new int[] { 0, Oe(30, 0), Oe(20, 0), Oe
-			(10, 0), Oe(5, 0), 0, 0, 0 };
+		private static readonly int PawnPasserUnstoppable = Oe(750, 750);
 
-		private static readonly int[] PawnStorm = new int[] { 0, 0, 0, Oe(10, 0), Oe(25, 
+		private static readonly int[] PawnShield = new int[] { 0, Oe(32, 0), Oe(24, 0), Oe
+			(16, 0), Oe(8, 0), 0, 0, 0 };
+
+		private static readonly int[] PawnStorm = new int[] { 0, 0, 0, Oe(12, 0), Oe(25, 
 			0), Oe(50, 0), 0, 0 };
 
-		private static readonly int[] KnightOutpost = new int[] { Oe(10, 15), Oe(20, 30) };
+		private static readonly int[] KnightOutpost = new int[] { Oe(15, 10), Oe(25, 15) };
 
-		private static readonly int[] BishopOutpost = new int[] { Oe(5, 7), Oe(10, 15) };
+		private static readonly int[] BishopOutpost = new int[] { Oe(7, 4), Oe(12, 7) };
 
 		private static readonly int BishopMyPawnsInColorPenalty = Oe(2, 4);
 
@@ -86,15 +88,11 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			, 0, 0, 0, 0, 0, Square.B5, Square.G6, 0, 0, 0, 0, 0, 0, Square.B6, 0, Square.F7
 			, 0, 0, 0, 0, Square.C7, 0 };
 
-		private static readonly int[] RookOutpost = new int[] { Oe(2, 3), Oe(4, 6) };
+		private static readonly int[] RookOutpost = new int[] { Oe(2, 1), Oe(3, 2) };
 
-		private static readonly int RookFileOpen = Oe(10, 10);
+		private static readonly int[] RookFile = new int[] { Oe(15, 10), Oe(7, 5) };
 
-		private static readonly int RookFileSemiopen = Oe(7, 5);
-
-		private static readonly int Rook7 = Oe(10, 20);
-
-		private static readonly int Queen7 = Oe(5, 10);
+		private static readonly int Rook7 = Oe(7, 10);
 
 		private static readonly int[] PieceAttacksKing = new int[] { 0, 0, Oe(30, 0), Oe(
 			20, 0), Oe(40, 0), Oe(80, 0) };
@@ -217,7 +215,7 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 		// Attacks
 		// Minor piece attacks to pawn undefended pieces
 		// Major piece attacks to pawn undefended pieces
-		// two or more pieces of the other side attacked by inferior pieces
+		// Two or more pieces of the other side attacked by inferior pieces
 		// Pawns
 		// Those are all penalties. Array is {not opposed, opposed}: If not opposed, backwards and isolated pawns can be easily attacked
 		// Not opposed is worse in the opening
@@ -231,11 +229,8 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 		// Penalty for each of my pawns in the bishop color (Capablanca rule)
 		// Rooks
 		// Array is Not defended by pawn, defended by pawn
-		// No pawns in rook file
-		// Only opposite pawns in rook file
-		// Rook 5, 6, 7th rank and pawn in the same file
-		// Queen
-		// Queen in 5, 6, 7th rank and pawn in the same file
+		// Open / Semi open
+		// Rook 5, 6 or 7th rank attacking a pawn in the same rank not defended by pawn
 		// King
 		// Sums for each piece attacking an square near the king
 		// Ponder kings attacks by the number of attackers (not pawns)
@@ -323,6 +318,8 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 			long pieceAttacks;
 			long safeAttacks;
 			long kingAttacks;
+			bool onlyKingsAndPawns = (board.knights | board.bishops | board.rooks | board.queens
+				) == 0;
 			long square = 1;
 			for (int index = 0; index < 64; index++)
 			{
@@ -398,13 +395,8 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 							{
 								passedPawns[us] += PawnCandidate[relativeRank];
 							}
-							// Pawn is part of the king shield
-							if ((pawnFile & kingZone[us]) != 0)
-							{
-								pawnStructure[us] += PawnShield[relativeRank];
-							}
-							// Pawn Storm
-							if ((pawnFile & kingZone[them]) != 0)
+							// Pawn Storm: It can open a file near the king
+							if ((routeToPromotion & kingZone[them]) != 0)
 							{
 								pawnStructure[us] += PawnStorm[relativeRank];
 							}
@@ -422,11 +414,10 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 								| board.queens) & mines) != 0 ? routeToPromotion : 0));
 							//
 							long pushSquare = isWhite ? square << 8 : (long)(((ulong)square) >> 8);
-							long pawnsLeft = BitboardUtils.FilesLeft[file] & board.pawns;
-							long pawnsRight = BitboardUtils.FilesRight[file] & board.pawns;
 							bool connected = (bbAttacks.king[index] & adjacentFiles & myPawns) != 0;
-							bool outside = ((pawnsLeft != 0) && (pawnsRight == 0)) || ((pawnsLeft == 0) && (pawnsRight
-								 != 0));
+							bool outside = otherPawns != 0 && (((square & BitboardUtils.FilesLeft[3]) != 0 &&
+								 (board.pawns & BitboardUtils.FilesLeft[file]) == 0) || ((square & BitboardUtils
+								.FilesRight[4]) != 0 && (board.pawns & BitboardUtils.FilesRight[file]) == 0));
 							bool mobile = (pushSquare & (all | attackedAndNotDefendedRoute)) == 0;
 							bool runner = mobile && (routeToPromotion & all) == 0 && attackedAndNotDefendedRoute
 								 == 0;
@@ -464,6 +455,35 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 									passedPawns[us] += PawnPasserMobile[relativeRank];
 								}
 							}
+							if (onlyKingsAndPawns && runner)
+							{
+								long promotionSquare = routeToPromotion & (isWhite ? BitboardUtils.Rank[7] : BitboardUtils
+									.Rank[0]);
+								if ((ai.kingAttacks[us] & promotionSquare) != 0 && (ai.kingAttacks[us] & square) 
+									!= 0)
+								{
+									// The king controls the promotion square
+									passedPawns[us] += PawnPasserUnstoppable;
+								}
+								else
+								{
+									// Simple pawn square rule implementation
+									int ranksToPromo = 7 - relativeRank + (relativeRank == 1 ? -1 : 0);
+									// The pawn can advance two squares
+									int kingToPromo = BitboardUtils.Distance(BitboardUtils.Square2Index(promotionSquare
+										), ai.kingIndex[them]) + (isWhite != board.GetTurn() ? -1 : 0);
+									// The other king can move first
+									if (kingToPromo > ranksToPromo)
+									{
+										passedPawns[us] += PawnPasserUnstoppable;
+									}
+								}
+							}
+						}
+						// Pawn is part of the king shield
+						if ((pawnFile & ~ranksForward & kingZone[us]) != 0)
+						{
+							pawnStructure[us] += PawnShield[relativeRank];
 						}
 					}
 					else
@@ -535,23 +555,19 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 										positional[us] += RookOutpost[(square & ai.pawnAttacks[us]) != 0 ? 1 : 0];
 									}
 									long rookFile = BitboardUtils.File[file];
-									if ((rookFile & board.pawns) == 0)
+									if ((rookFile & board.pawns & mines) == 0)
 									{
-										positional[us] += RookFileOpen;
+										positional[us] += RookFile[(rookFile & board.pawns) == 0 ? 0 : 1];
 									}
-									else
+									int relativeRank = isWhite ? rank : 7 - rank;
+									if (relativeRank >= 4)
 									{
-										if ((rookFile & board.pawns & mines) == 0)
+										long pawnsAttacked = pieceAttacks & BitboardUtils.Rank[rank] & board.pawns & others
+											 & ~ai.pawnAttacks[them];
+										if (pawnsAttacked != 0)
 										{
-											positional[us] += RookFileSemiopen;
+											positional[us] += Rook7 * BitboardUtils.PopCount(pawnsAttacked);
 										}
-									}
-									long ranks567 = isWhite ? BitboardUtils.Rank[4] | BitboardUtils.Rank[5] | BitboardUtils
-										.Rank[6] : BitboardUtils.Rank[1] | BitboardUtils.Rank[2] | BitboardUtils.Rank[3];
-									if ((square & ranks567) != 0 && (BitboardUtils.Rank[rank] & board.pawns & others)
-										 != 0)
-									{
-										positional[us] += Rook7;
 									}
 								}
 								else
@@ -569,13 +585,6 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 											kingSafety[us] += PieceAttacksKing[Piece.Queen] * BitboardUtils.PopCount(kingAttacks
 												);
 											kingAttackersCount[us]++;
-										}
-										long ranks567 = isWhite ? BitboardUtils.Rank[4] | BitboardUtils.Rank[5] | BitboardUtils
-											.Rank[6] : BitboardUtils.Rank[1] | BitboardUtils.Rank[2] | BitboardUtils.Rank[3];
-										if ((square & ranks567) != 0 && (BitboardUtils.Rank[rank] & board.pawns & others)
-											 != 0)
-										{
-											positional[us] += Queen7;
 										}
 									}
 									else

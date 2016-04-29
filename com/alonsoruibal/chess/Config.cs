@@ -16,8 +16,6 @@ namespace Com.Alonsoruibal.Chess
 
 		public const string DefaultEvaluator = "experimental";
 
-		public const int DefaultContemptFactor = 90;
-
 		public const int DefaultRand = 0;
 
 		public const int DefaultElo = 2100;
@@ -36,14 +34,11 @@ namespace Com.Alonsoruibal.Chess
 
 		private string evaluator = DefaultEvaluator;
 
-		private int contemptFactor = DefaultContemptFactor;
-
 		private int rand = DefaultRand;
 
 		private bool uciChess960 = DefaultUciChess960;
 
 		// Default values are static fields used also from UCIEngine
-		// >0 refuses draw <0 looks for draw
 		public virtual bool GetPonder()
 		{
 			return ponder;
@@ -102,16 +97,6 @@ namespace Com.Alonsoruibal.Chess
 		public virtual void SetTranspositionTableSize(int transpositionTableSize)
 		{
 			this.transpositionTableSize = transpositionTableSize;
-		}
-
-		public virtual int GetContemptFactor()
-		{
-			return contemptFactor;
-		}
-
-		public virtual void SetContemptFactor(int contemptFactor)
-		{
-			this.contemptFactor = contemptFactor;
 		}
 
 		public virtual int GetRand()

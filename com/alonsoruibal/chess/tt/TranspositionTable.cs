@@ -19,9 +19,9 @@ namespace Com.Alonsoruibal.Chess.TT
 		private static readonly Logger logger = Logger.GetLogger("MultiprobeTranspositionTable"
 			);
 
-		public const int DepthQsChecks = 1;
+		public const int DepthQsChecks = 0;
 
-		public const int DepthQsNoChecks = 0;
+		public const int DepthQsNoChecks = -1;
 
 		public const int TypeEval = 0;
 
@@ -121,7 +121,8 @@ namespace Com.Alonsoruibal.Chess.TT
 
 		public virtual int GetDepthAnalyzed()
 		{
-			return (int)((long)(((ulong)info) >> 40)) & unchecked((int)(0xff));
+			int depthAnalyzed = (int)((long)(((ulong)info) >> 40)) & unchecked((int)(0xff));
+			return depthAnalyzed == unchecked((int)(0xff)) ? -1 : depthAnalyzed;
 		}
 
 		public virtual int GetScore()
@@ -217,7 +218,7 @@ namespace Com.Alonsoruibal.Chess.TT
 					}
 				}
 				// Calculates a value with this TT entry importance
-				int entryImportance = (GetNodeType() == TypeExactScore ? 10 : 0) + 255 - GetGenerationDelta
+				int entryImportance = (GetNodeType() == TypeExactScore ? 10 : 0) - GetGenerationDelta
 					() + GetDepthAnalyzed();
 				// Bonus for the PV entries
 				// The older the generation, the less importance

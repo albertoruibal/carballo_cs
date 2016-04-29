@@ -182,7 +182,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			int timeInc = engineIsWhite ? winc : binc;
 			if (timeAvailable > 0)
 			{
-				calcTime = timeAvailable / 30 + timeInc;
+				calcTime = timeAvailable / 25;
 			}
 			if (panicTime)
 			{
@@ -191,6 +191,7 @@ namespace Com.Alonsoruibal.Chess.Search
 			}
 			calcTime = Math.Min(calcTime, (int)(((uint)timeAvailable) >> 3));
 			// Never consume more than time / 8
+			calcTime += timeInc;
 			logger.Debug("Thinking for " + calcTime + "Ms");
 			return startTime + calcTime;
 		}

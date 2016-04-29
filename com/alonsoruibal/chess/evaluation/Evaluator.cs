@@ -29,6 +29,9 @@ namespace Com.Alonsoruibal.Chess.Evaluation
 
 		public const int Queen = 975;
 
+		public static readonly int[] PieceValues = new int[] { 0, Pawn, Knight, Bishop, Rook
+			, Queen };
+
 		public static readonly int BishopPair = Com.Alonsoruibal.Chess.Evaluation.Evaluator
 			.Oe(50, 50);
 

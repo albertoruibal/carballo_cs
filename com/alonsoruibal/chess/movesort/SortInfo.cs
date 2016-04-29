@@ -16,7 +16,8 @@ namespace Com.Alonsoruibal.Chess.Movesort
 
 		public SortInfo()
 		{
-			//  Two killer move slots
+			// Two killer move slots
+			// By piece type and destiny square
 			killerMove1 = new int[SearchEngine.MaxDepth];
 			killerMove2 = new int[SearchEngine.MaxDepth];
 			history = new int[][] { new int[64], new int[64], new int[64], new int[64], new int
@@ -37,7 +38,7 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		public virtual void BetaCutoff(int move, int depth)
 		{
 			// removes captures and promotions from killers
-			if (move == 0 || Move.IsTactical(move))
+			if (move == Move.None || Move.IsTactical(move))
 			{
 				return;
 			}
@@ -63,11 +64,6 @@ namespace Com.Alonsoruibal.Chess.Movesort
 		public virtual int GetMoveScore(int move)
 		{
 			return history[Move.GetPieceMoved(move) - 1][Move.GetToIndex(move)];
-		}
-
-		public virtual bool IsKiller(int move, int depth)
-		{
-			return (killerMove1[depth] == move) || (killerMove2[depth] == move);
 		}
 	}
 }

@@ -14,24 +14,14 @@ namespace Com.Alonsoruibal.Chess.Search
 		}
 
 		/// <summary>Threaded version</summary>
-		public override void Go(SearchParameters searchParameteres)
+		public override void Go(SearchParameters searchParameters)
 		{
-			if (!IsInitialized())
+			if (initialized && !searching)
 			{
-				return;
-			}
-			if (!IsSearching())
-			{
-				SetSearchParameters(searchParameteres);
-				try
-				{
-					PrepareRun();
-					thread = new Sharpen.Thread(this);
-					thread.Start();
-				}
-				catch (SearchFinishedException)
-				{
-				}
+				searching = true;
+				SetSearchParameters(searchParameters);
+				thread = new Sharpen.Thread(this);
+				thread.Start();
 			}
 		}
 
@@ -39,7 +29,7 @@ namespace Com.Alonsoruibal.Chess.Search
 		public override void Stop()
 		{
 			base.Stop();
-			while (IsSearching())
+			while (searching)
 			{
 				try
 				{
